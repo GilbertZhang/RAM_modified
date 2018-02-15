@@ -7,6 +7,9 @@ import random
 import sys
 import os
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 try:
     xrange
@@ -346,7 +349,7 @@ def preTrain(outputs):
     return reconstructionCost, reconstruction, train_op_r
 
 
-def evaluate():
+def evaluate(summary_writer, epoch):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0
@@ -362,6 +365,10 @@ def evaluate():
 
     accuracy /= batches_in_epoch
     print(("ACCURACY: " + str(accuracy)))
+    summary = tf.Summary()
+    summary.value.add(tag='Accuracy', simple_value=accuracy)
+    summary_writer.add_summary(summary, epoch)
+    summary_writer.flush()
 
 
 def convertTranslated(images, initImgSize, finalImgSize):
@@ -606,9 +613,9 @@ with tf.device('/gpu:1'):
                     # if saveImgs:
                     #     plt.savefig(imgsFolderName + simulationName + '_ep%.6d.png' % (epoch))
 
-                    if epoch % 5000 == 0:
+                    if epoch % 1000 == 0:
                         saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
-                        evaluate()
+                        evaluate(summary_writer, epoch)
 
                     ##### DRAW WINDOW ################
                     f_glimpse_images = np.reshape(glimpse_images_fetched, \
