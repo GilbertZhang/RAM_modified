@@ -7,6 +7,10 @@ import random
 import sys
 import os
 
+from PIL import Image
+import PIL.ImageDraw as ImageDraw
+import PIL.ImageFont as ImageFont
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
@@ -514,9 +518,52 @@ with tf.device('/gpu:1'):
         tf.summary.scalar("cost", cost)
         tf.summary.scalar("mean(b)", avg_b)
         tf.summary.scalar("mean(R - b)", rminusb)
+
+        def draw_bbox(image_path, locations):
+            locations = toMnistCoordinates(locations)
+            image_path = np.squeeze(np.uint8(image_path), -1)
+            im = Image.fromarray(np.uint8(image_path), "L")
+            im = im.convert("RGB")
+            try:
+                font = ImageFont.truetype('arial.ttf', 3)
+            except IOError:
+                font = ImageFont.load_default()
+            draw = ImageDraw.Draw(im)
+            colors = ['red', 'yellow', 'blue', 'green', 'pink', 'purple']
+            for index, location in enumerate(locations, 1):
+                # text_bottom = location[0] + 6 + 3
+                left = location[1] - 6
+                right = location[1] + 6
+                top = location[0] + 6
+                bottom = location[0] - 6
+                text_width, text_height = font.getsize(str(index))
+                # margin = np.ceil(0.05 * text_height)
+                # draw.rectangle(
+                #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
+                #                                                       text_bottom)],
+                #     fill=colors[index-1])
+                # draw.text(
+                #     (left + margin, text_bottom - text_height - margin),
+                #     str(index),
+                #     fill='black',
+                #     font=font)
+
+                draw.line([(left, top), (left, bottom), (right, bottom),
+                           (right, top), (left, top)], width=1, fill=colors[index-1])
+            return im
+
+
+        def draw_boxes(image_and_detections):
+            """Draws boxes on image."""
+            image_with_boxes = tf.py_func(draw_bbox, image_and_detections,
+                                          tf.uint8)
+            return image_with_boxes
+
+        image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
+        image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
+        images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
+
         summary_op = tf.summary.merge_all()
-
-
         ####################################### START RUNNING THE MODEL #######################################
 
         sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -581,6 +628,8 @@ with tf.device('/gpu:1'):
                                 # plt.show()
 
 
+            print ("number of mini_batches: ", (dataset.train.num_examples//batch_size))
+            num_batch = dataset.train.num_examples//batch_size
             # training
             for epoch in range(start_step + 1, max_iters):
                 start_time = time.time()
@@ -616,6 +665,10 @@ with tf.device('/gpu:1'):
                     if epoch % 1000 == 0:
                         saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
                         evaluate(summary_writer, epoch)
+                    if epoch % 5000 == 0:
+                        image_summary = tf.summary.image("translated_mnist{:06d}".format(epoch), images, 2)
+                        sum_img = sess.run(image_summary, feed_dict=feed_dict)
+                        summary_writer.add_summary(sum_img, epoch)
 
                     ##### DRAW WINDOW ################
                     f_glimpse_images = np.reshape(glimpse_images_fetched, \
