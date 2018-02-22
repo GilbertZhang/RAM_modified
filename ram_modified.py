@@ -202,8 +202,10 @@ def get_glimpse_conv(loc):
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
     conv3d_reshape = tf.reshape(conv3d, (batch_size, 64))
     act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
-    act_loc_hidden = tf.nn.relu(tf.matmul(loc, Wg_l_h) + Bg_l_h)
-
+    all_scales = tf.unstack(glimpse_input, axis=1)
+    last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
+    loc_scale = tf.concat((loc, last_scale), axis=1)
+    act_loc_hidden = tf.nn.relu(tf.matmul(loc_scale, Wg_l_h) + Bg_l_h)
     # the hidden units that integrates the location & the glimps
     # +-es
     glimpseFeature1 = tf.nn.relu(tf.matmul(act_glimpse_hidden, Wg_hg_gf1) + tf.matmul(act_loc_hidden, Wg_hl_gf1) + Bg_hlhg_gf1)
@@ -477,7 +479,7 @@ with tf.device('/gpu:1'):
         # the 2nd lowercase letter: the network (e.g.: g = glimpse network)
         # the 3rd and 4th letter(s): input-output mapping, which is clearly written in the variable name argument
 
-        Wg_l_h = weight_variable((2, hl_size), "glimpseNet_wts_location_hidden", True)
+        Wg_l_h = weight_variable((146, hl_size), "glimpseNet_wts_location_hidden", True)
         Bg_l_h = weight_variable((1,hl_size), "glimpseNet_bias_location_hidden", True)
 
         Wg_g_h = weight_variable((totalSensorBandwidth, hg_size), "glimpseNet_wts_glimpse_hidden", True)
