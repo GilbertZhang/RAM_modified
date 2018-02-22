@@ -13,7 +13,7 @@ import PIL.ImageFont as ImageFont
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 try:
     xrange
@@ -99,7 +99,7 @@ nGlimpses = 6               # number of glimpses
 loc_sd = 0.22               # std when setting the location
 
 # network units
-hg_size = 128               #
+hg_size = 64               #
 hl_size = 128               #
 g_size = 256                #
 cell_size = 256             #
@@ -185,6 +185,32 @@ def get_glimpse(loc):
     # glimpseFeature2 = tf.matmul(glimpseFeature1, Wg_gf1_gf2) + Bg_gf1_gf2
     return glimpseFeature1
 
+# implements the input network
+def get_glimpse_conv(loc):
+    # get input using the previous location
+    glimpse_input = glimpseSensor(inputs_placeholder, loc)
+    ###glimpse_input = tf.reshape(glimpse_input, (batch_size, totalSensorBandwidth))
+    glimpse_input = tf.expand_dims(glimpse_input, 4)
+    glimpse_input = tf.reshape(glimpse_input, (batch_size, 3, sensorBandwidth, sensorBandwidth, 1))
+    # the hidden units that process location & the input
+    ###act_glimpse_hidden = tf.nn.relu(tf.matmul(glimpse_input, Wg_g_h) + Bg_g_h)
+    filters = weight_variable([1, 3, 3, 1, 16], 'conv3d_w', True)
+    conv3d = tf.nn.conv3d(glimpse_input, filters, strides=[1, 1, 1, 1, 1], padding='VALID') # 20*3*8*8*16
+    conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,1,2,2,1], padding="VALID")
+    filters2 = weight_variable([1, 2, 2, 16, 16], 'conv3d_w2', True)
+    conv3d = tf.nn.conv3d(conv3d, filters2, strides=[1,1,1,1,1], padding='VALID')
+    conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
+    conv3d_reshape = tf.reshape(conv3d, (batch_size, 64))
+    act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
+    act_loc_hidden = tf.nn.relu(tf.matmul(loc, Wg_l_h) + Bg_l_h)
+
+    # the hidden units that integrates the location & the glimps
+    # +-es
+    glimpseFeature1 = tf.nn.relu(tf.matmul(act_glimpse_hidden, Wg_hg_gf1) + tf.matmul(act_loc_hidden, Wg_hl_gf1) + Bg_hlhg_gf1)
+    # return g
+    # glimpseFeature2 = tf.matmul(glimpseFeature1, Wg_gf1_gf2) + Bg_gf1_gf2
+    return glimpseFeature1
+
 
 def get_next_input(output):
     # the next location is computed by the location network
@@ -214,7 +240,7 @@ def get_next_input(output):
     sample_loc = tf.stop_gradient(sample_loc)
     sampled_locs.append(sample_loc)
 
-    return get_glimpse(sample_loc)
+    return get_glimpse_conv(sample_loc)
 
 
 def affineTransform(x,output_dim):
@@ -239,7 +265,7 @@ def model():
     sampled_locs.append(initial_loc)
 
     # get the input using the input network
-    initial_glimpse = get_glimpse(initial_loc)
+    initial_glimpse = get_glimpse_conv(initial_loc)
 
     # set up the recurrent structure
     inputs = [0] * nGlimpses
