@@ -7,6 +7,7 @@ import random
 import sys
 import os
 
+import cv2
 from PIL import Image
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
@@ -389,7 +390,7 @@ def evaluate(summary_writer, epoch):
     for i in range(batches_in_epoch):
         nextX, nextY = dataset.test.next_batch(batch_size)
         if translateMnist:
-            nextX, _ = convertTranslated(nextX, MNIST_SIZE, img_size)
+            nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
         feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
                      onehot_labels_placeholder: dense_to_one_hot(nextY)}
         r = sess.run(reward, feed_dict=feed_dict)
@@ -403,19 +404,22 @@ def evaluate(summary_writer, epoch):
     summary_writer.flush()
 
 
-def convertTranslated(images, initImgSize, finalImgSize):
-    size_diff = finalImgSize - initImgSize
+def convertTranslated(images, initImgSize, transSize, finalImgSize):
+    size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
     imgCoord = np.zeros([batch_size,2])
     for k in range(batch_size):
         image = images[k, :]
         image = np.reshape(image, (initImgSize, initImgSize))
+        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
         # generate and save random coordinates
         randX = random.randint(0, size_diff)
         randY = random.randint(0, size_diff)
         imgCoord[k,:] = np.array([randX, randY])
         # padding
         image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
+        # plt.imshow(image, cmap='gray')
+        # plt.show()
         newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
@@ -628,7 +632,7 @@ with tf.device('/gpu:1'):
                     nextX, _ = dataset.train.next_batch(batch_size)
                     nextX_orig = nextX
                     if translateMnist:
-                        nextX, _ = convertTranslated(nextX, MNIST_SIZE, img_size)
+                        nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
 
                     fetches_r = [reconstructionCost, reconstruction, train_op_r]
 
@@ -666,7 +670,7 @@ with tf.device('/gpu:1'):
                 nextX, nextY = dataset.train.next_batch(batch_size)
                 nextX_orig = nextX
                 if translateMnist:
-                    nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, img_size)
+                    nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
 
                 feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
                              onehot_labels_placeholder: dense_to_one_hot(nextY)}
