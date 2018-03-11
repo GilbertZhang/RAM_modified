@@ -31,6 +31,7 @@ if len(sys.argv) == 2:
     simulationName = str(sys.argv[1])
     print("Simulation name = " + simulationName)
     summaryFolderName = summaryFolderName + simulationName + "/"
+    save_dir= save_dir + simulationName + '/'
     saveImgs = True
     imgsFolderName = "imgs/" + simulationName + "/"
     if os.path.isdir(summaryFolderName) == False:
@@ -205,8 +206,9 @@ def get_glimpse_conv(loc):
     act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
     all_scales = tf.unstack(glimpse_input, axis=1)
     last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
-    loc_scale = tf.concat((loc, last_scale), axis=1)
-    act_loc_hidden = tf.nn.relu(tf.matmul(loc_scale, Wg_l_h) + Bg_l_h)
+    #loc_scale = tf.concat((loc, last_scale), axis=1)
+    #act_loc_hidden = tf.nn.relu(tf.matmul(loc_scale, Wg_l_h) + Bg_l_h)
+    act_loc_hidden = tf.nn.relu(tf.matmul(loc, Wg_l_h) + Bg_l_h)
     # the hidden units that integrates the location & the glimps
     # +-es
     glimpseFeature1 = tf.nn.relu(tf.matmul(act_glimpse_hidden, Wg_hg_gf1) + tf.matmul(act_loc_hidden, Wg_hl_gf1) + Bg_hlhg_gf1)
@@ -483,7 +485,7 @@ with tf.device('/gpu:1'):
         # the 2nd lowercase letter: the network (e.g.: g = glimpse network)
         # the 3rd and 4th letter(s): input-output mapping, which is clearly written in the variable name argument
 
-        Wg_l_h = weight_variable((146, hl_size), "glimpseNet_wts_location_hidden", True)
+        Wg_l_h = weight_variable((2, hl_size), "glimpseNet_wts_location_hidden", True)
         Bg_l_h = weight_variable((1,hl_size), "glimpseNet_bias_location_hidden", True)
 
         Wg_g_h = weight_variable((totalSensorBandwidth, hg_size), "glimpseNet_wts_glimpse_hidden", True)
