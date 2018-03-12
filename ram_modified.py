@@ -51,6 +51,8 @@ eval_only = False
 draw = False
 animate = False
 
+mix_training = True
+
 # conditions
 translateMnist = 1
 eyeCentered = 0
@@ -672,7 +674,15 @@ with tf.device('/gpu:1'):
                 nextX, nextY = dataset.train.next_batch(batch_size)
                 nextX_orig = nextX
                 if translateMnist:
-                    nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
+                    if mix_training:
+                        if epoch % 3 == 0:
+                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
+                        elif epoch % 3 == 1:
+                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE//2, img_size)
+                        else:
+                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE*2, img_size)
+                    else:
+                        nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
 
                 feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
                              onehot_labels_placeholder: dense_to_one_hot(nextY)}
