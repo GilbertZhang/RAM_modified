@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import random
+from random import Random
 import sys
 import os
 
@@ -46,8 +47,9 @@ else:
 start_step = 0
 #load_path = None
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
+load_path = './chckPts/test3/save1000.ckpt'
 # to enable visualization, set draw to True
-eval_only = False
+eval_only = True
 draw = False
 animate = False
 
@@ -408,6 +410,24 @@ def evaluate(summary_writer, epoch):
     summary_writer.flush()
 
 
+def evaluate1():
+    data = dataset.test
+    batches_in_epoch = len(data._images) // batch_size
+    accuracy = 0
+
+    for i in range(batches_in_epoch):
+        nextX, nextY = dataset.test.next_batch(batch_size)
+        if translateMnist:
+            nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
+        feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
+                     onehot_labels_placeholder: dense_to_one_hot(nextY)}
+        r = sess.run(reward, feed_dict=feed_dict)
+        accuracy += r
+
+    accuracy /= batches_in_epoch
+    print(("ACCURACY: " + str(accuracy)))
+
+
 def convertTranslated(images, initImgSize, transSize, finalImgSize):
     size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
@@ -417,8 +437,9 @@ def convertTranslated(images, initImgSize, transSize, finalImgSize):
         image = np.reshape(image, (initImgSize, initImgSize))
         image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
         # generate and save random coordinates
-        randX = random.randint(0, size_diff)
-        randY = random.randint(0, size_diff)
+        Random1 = Random(217)
+        randX = Random1.randint(0, size_diff)
+        randY = Random1.randint(0, size_diff)
         imgCoord[k,:] = np.array([randX, randY])
         # padding
         image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
@@ -613,7 +634,8 @@ with tf.device('/gpu:1'):
         sess.run(init)
 
         if eval_only:
-            evaluate()
+            saver.restore(sess, load_path)
+            evaluate1()
         else:
             summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 
