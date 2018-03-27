@@ -61,7 +61,7 @@ mix_training = False
 
 # conditions
 translateMnist = 1
-translateMnist_scale = 1
+translateMnist_scale = 28
 eyeCentered = 0
 
 preTraining = 0
@@ -480,6 +480,41 @@ def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
         image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
         # plt.imshow(image, cmap='gray')
         # plt.show()
+        newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
+
+    return newimages, imgCoord
+
+def convertCluttered(images, initImgSize, finalImgSize):
+    size_diff = finalImgSize - initImgSize
+    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
+    imgCoord = np.zeros([batch_size,2])
+    for k in range(batch_size):
+        image = images[k, :]
+        image = np.reshape(image, (initImgSize, initImgSize))
+        # generate and save random coordinates
+        # Random1 = Random(217)
+        randX = np.random.randint(0, size_diff-14)
+        randY = np.random.randint(0, size_diff-14)
+        imgCoord[k,:] = np.array([randX, randY])
+        #clutter
+        clutter = np.reshape(images[np.random.randint(0,batch_size), :], (initImgSize, initImgSize))
+        num1 = np.random.randint(0,1)
+        num2 = np.random.randint(0,1)
+        clutter = clutter[num1*14:num1*14+14, num2*14:num2*14+14]
+        # padding
+        num3 = np.random.randint(0, 1)
+        num4 = np.random.randint(0, 1)
+        image = np.lib.pad(image, ((randX + num3*14, size_diff-14-randX + (1-num3)*14), (randY + num4*14, size_diff-14-randY+(1-num4)*14)), 'constant', constant_values = (0))
+        if not num3 and not num4:
+            image[finalImgSize-14:, finalImgSize-14:] = clutter
+        elif num3 and not num4:
+            image[:14, finalImgSize-14:] = clutter
+        elif not num3 and num4:
+            image[finalImgSize-14:, :14] = clutter
+        else:
+            image[:14,:14] = clutter
+        plt.imshow(image, cmap='gray')
+        plt.show()
         newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
