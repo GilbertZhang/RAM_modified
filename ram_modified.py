@@ -17,6 +17,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
+mode='baseline'
+# mode='conv'
+# mode='conv_concat'
+
 try:
     xrange
 except NameError:
@@ -49,14 +53,15 @@ start_step = 0
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
 load_path = './chckPts/test3/save1000.ckpt'
 # to enable visualization, set draw to True
-eval_only = True
+eval_only = False
 draw = False
 animate = False
 
-mix_training = True
+mix_training = False
 
 # conditions
 translateMnist = 1
+translateMnist_scale = 1
 eyeCentered = 0
 
 preTraining = 0
@@ -208,11 +213,13 @@ def get_glimpse_conv(loc):
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
     conv3d_reshape = tf.reshape(conv3d, (batch_size, 64))
     act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
-    all_scales = tf.unstack(glimpse_input, axis=1)
-    last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
-    #loc_scale = tf.concat((loc, last_scale), axis=1)
-    #act_loc_hidden = tf.nn.relu(tf.matmul(loc_scale, Wg_l_h) + Bg_l_h)
-    act_loc_hidden = tf.nn.relu(tf.matmul(loc, Wg_l_h) + Bg_l_h)
+    if mode == 'conv_concat':
+        all_scales = tf.unstack(glimpse_input, axis=1)
+        last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
+        loc_scale = tf.concat((loc, last_scale), axis=1)
+        act_loc_hidden = tf.nn.relu(tf.matmul(loc_scale, Wg_l_h) + Bg_l_h)
+    else:
+        act_loc_hidden = tf.nn.relu(tf.matmul(loc, Wg_l_h) + Bg_l_h)
     # the hidden units that integrates the location & the glimps
     # +-es
     glimpseFeature1 = tf.nn.relu(tf.matmul(act_glimpse_hidden, Wg_hg_gf1) + tf.matmul(act_loc_hidden, Wg_hl_gf1) + Bg_hlhg_gf1)
@@ -249,7 +256,10 @@ def get_next_input(output):
     sample_loc = tf.stop_gradient(sample_loc)
     sampled_locs.append(sample_loc)
 
-    return get_glimpse_conv(sample_loc)
+    if mode == 'baseline':
+        return get_glimpse(sample_loc)
+    else:
+        return get_glimpse_conv(sample_loc)
 
 
 def affineTransform(x,output_dim):
@@ -450,6 +460,30 @@ def convertTranslated(images, initImgSize, transSize, finalImgSize):
     return newimages, imgCoord
 
 
+def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
+
+    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
+    imgCoord = np.zeros([batch_size,2])
+    for k in range(batch_size):
+        rand_int = np.random.randint(0,len(transSizes))
+        transSize = transSizes[rand_int]
+        size_diff = finalImgSize - transSize
+        image = images[k, :]
+        image = np.reshape(image, (initImgSize, initImgSize))
+        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
+        # generate and save random coordinates
+        Random1 = Random(217)
+        randX = Random1.randint(0, size_diff)
+        randY = Random1.randint(0, size_diff)
+        imgCoord[k,:] = np.array([randX, randY])
+        # padding
+        image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
+        # plt.imshow(image, cmap='gray')
+        # plt.show()
+        newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
+
+    return newimages, imgCoord
+
 
 def toMnistCoordinates(coordinate_tanh):
     '''
@@ -489,299 +523,297 @@ def plotWholeImg(img, img_size, sampled_locs_fetched):
              color='red')
 
 
-with tf.device('/gpu:1'):
+# with tf.device('/gpu:1'):
 
-    with tf.Graph().as_default():
+with tf.Graph().as_default():
 
-        # set the learning rate
-        global_step = tf.Variable(0, trainable=False)
-        lr = tf.train.exponential_decay(initLr, global_step, lrDecayFreq, lrDecayRate, staircase=True)
+    # set the learning rate
+    global_step = tf.Variable(0, trainable=False)
+    lr = tf.train.exponential_decay(initLr, global_step, lrDecayFreq, lrDecayRate, staircase=True)
 
-        # preallocate x, y, baseline
-        labels = tf.placeholder("float32", shape=[batch_size, n_classes])
-        labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size), name="labels_raw")
-        onehot_labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, 10), name="labels_onehot")
-        inputs_placeholder = tf.placeholder(tf.float32, shape=(batch_size, img_size * img_size), name="images")
+    # preallocate x, y, baseline
+    labels = tf.placeholder("float32", shape=[batch_size, n_classes])
+    labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size), name="labels_raw")
+    onehot_labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, 10), name="labels_onehot")
+    inputs_placeholder = tf.placeholder(tf.float32, shape=(batch_size, img_size * img_size), name="images")
 
-        # declare the model parameters, here're naming rule:
-        # the 1st captical letter: weights or bias (W = weights, B = bias)
-        # the 2nd lowercase letter: the network (e.g.: g = glimpse network)
-        # the 3rd and 4th letter(s): input-output mapping, which is clearly written in the variable name argument
-
+    # declare the model parameters, here're naming rule:
+    # the 1st captical letter: weights or bias (W = weights, B = bias)
+    # the 2nd lowercase letter: the network (e.g.: g = glimpse network)
+    # the 3rd and 4th letter(s): input-output mapping, which is clearly written in the variable name argument
+    if mode == 'conv_concat':
+        Wg_l_h = weight_variable((146, hl_size), "glimpseNet_wts_location_hidden", True)
+    else:
         Wg_l_h = weight_variable((2, hl_size), "glimpseNet_wts_location_hidden", True)
-        Bg_l_h = weight_variable((1,hl_size), "glimpseNet_bias_location_hidden", True)
+    Bg_l_h = weight_variable((1,hl_size), "glimpseNet_bias_location_hidden", True)
 
-        Wg_g_h = weight_variable((totalSensorBandwidth, hg_size), "glimpseNet_wts_glimpse_hidden", True)
-        Bg_g_h = weight_variable((1,hg_size), "glimpseNet_bias_glimpse_hidden", True)
+    Wg_g_h = weight_variable((totalSensorBandwidth, hg_size), "glimpseNet_wts_glimpse_hidden", True)
+    Bg_g_h = weight_variable((1,hg_size), "glimpseNet_bias_glimpse_hidden", True)
 
-        Wg_hg_gf1 = weight_variable((hg_size, g_size), "glimpseNet_wts_hiddenGlimpse_glimpseFeature1", True)
-        Wg_hl_gf1 = weight_variable((hl_size, g_size), "glimpseNet_wts_hiddenLocation_glimpseFeature1", True)
-        Bg_hlhg_gf1 = weight_variable((1,g_size), "glimpseNet_bias_hGlimpse_hLocs_glimpseFeature1", True)
+    Wg_hg_gf1 = weight_variable((hg_size, g_size), "glimpseNet_wts_hiddenGlimpse_glimpseFeature1", True)
+    Wg_hl_gf1 = weight_variable((hl_size, g_size), "glimpseNet_wts_hiddenLocation_glimpseFeature1", True)
+    Bg_hlhg_gf1 = weight_variable((1,g_size), "glimpseNet_bias_hGlimpse_hLocs_glimpseFeature1", True)
 
-        Wc_g_h = weight_variable((cell_size, g_size), "coreNet_wts_glimpse_hidden", True)
-        Bc_g_h = weight_variable((1,g_size), "coreNet_bias_glimpse_hidden", True)
+    Wc_g_h = weight_variable((cell_size, g_size), "coreNet_wts_glimpse_hidden", True)
+    Bc_g_h = weight_variable((1,g_size), "coreNet_bias_glimpse_hidden", True)
 
-        Wr_h_r = weight_variable((cell_out_size, img_size**2), "reconstructionNet_wts_hidden_action", True)
-        Br_h_r = weight_variable((1, img_size**2), "reconstructionNet_bias_hidden_action", True)
+    Wr_h_r = weight_variable((cell_out_size, img_size**2), "reconstructionNet_wts_hidden_action", True)
+    Br_h_r = weight_variable((1, img_size**2), "reconstructionNet_bias_hidden_action", True)
 
-        Wb_h_b = weight_variable((g_size, 1), "baselineNet_wts_hiddenState_baseline", True)
-        Bb_h_b = weight_variable((1,1), "baselineNet_bias_hiddenState_baseline", True)
+    Wb_h_b = weight_variable((g_size, 1), "baselineNet_wts_hiddenState_baseline", True)
+    Bb_h_b = weight_variable((1,1), "baselineNet_bias_hiddenState_baseline", True)
 
-        Wl_h_l = weight_variable((cell_out_size, 2), "locationNet_wts_hidden_location", True)
-        Bl_h_l = weight_variable((1, 2), "locationNet_bias_hidden_location", True)
+    Wl_h_l = weight_variable((cell_out_size, 2), "locationNet_wts_hidden_location", True)
+    Bl_h_l = weight_variable((1, 2), "locationNet_bias_hidden_location", True)
 
-        Wa_h_a = weight_variable((cell_out_size, n_classes), "actionNet_wts_hidden_action", True)
-        Ba_h_a = weight_variable((1,n_classes),  "actionNet_bias_hidden_action", True)
+    Wa_h_a = weight_variable((cell_out_size, n_classes), "actionNet_wts_hidden_action", True)
+    Ba_h_a = weight_variable((1,n_classes),  "actionNet_bias_hidden_action", True)
 
-        # query the model ouput
-        outputs = model()
+    # query the model ouput
+    outputs = model()
 
-        # convert list of tensors to one big tensor
-        sampled_locs = tf.concat(axis=0, values=sampled_locs)
-        sampled_locs = tf.reshape(sampled_locs, (nGlimpses, batch_size, 2))
-        sampled_locs = tf.transpose(sampled_locs, [1, 0, 2])
-        mean_locs = tf.concat(axis=0, values=mean_locs)
-        mean_locs = tf.reshape(mean_locs, (nGlimpses, batch_size, 2))
-        mean_locs = tf.transpose(mean_locs, [1, 0, 2])
-        glimpse_images = tf.concat(axis=0, values=glimpse_images)
+    # convert list of tensors to one big tensor
+    sampled_locs = tf.concat(axis=0, values=sampled_locs)
+    sampled_locs = tf.reshape(sampled_locs, (nGlimpses, batch_size, 2))
+    sampled_locs = tf.transpose(sampled_locs, [1, 0, 2])
+    mean_locs = tf.concat(axis=0, values=mean_locs)
+    mean_locs = tf.reshape(mean_locs, (nGlimpses, batch_size, 2))
+    mean_locs = tf.transpose(mean_locs, [1, 0, 2])
+    glimpse_images = tf.concat(axis=0, values=glimpse_images)
 
-        # compute the reward
-        reconstructionCost, reconstruction, train_op_r = preTrain(outputs)
-        cost, reward, predicted_labels, correct_labels, train_op, b, avg_b, rminusb, lr = calc_reward(outputs)
+    # compute the reward
+    reconstructionCost, reconstruction, train_op_r = preTrain(outputs)
+    cost, reward, predicted_labels, correct_labels, train_op, b, avg_b, rminusb, lr = calc_reward(outputs)
 
-        # tensorboard visualization for the parameters
-        variable_summaries(Wg_l_h, "glimpseNet_wts_location_hidden")
-        variable_summaries(Bg_l_h, "glimpseNet_bias_location_hidden")
-        variable_summaries(Wg_g_h, "glimpseNet_wts_glimpse_hidden")
-        variable_summaries(Bg_g_h, "glimpseNet_bias_glimpse_hidden")
-        variable_summaries(Wg_hg_gf1, "glimpseNet_wts_hiddenGlimpse_glimpseFeature1")
-        variable_summaries(Wg_hl_gf1, "glimpseNet_wts_hiddenLocation_glimpseFeature1")
-        variable_summaries(Bg_hlhg_gf1, "glimpseNet_bias_hGlimpse_hLocs_glimpseFeature1")
+    # tensorboard visualization for the parameters
+    variable_summaries(Wg_l_h, "glimpseNet_wts_location_hidden")
+    variable_summaries(Bg_l_h, "glimpseNet_bias_location_hidden")
+    variable_summaries(Wg_g_h, "glimpseNet_wts_glimpse_hidden")
+    variable_summaries(Bg_g_h, "glimpseNet_bias_glimpse_hidden")
+    variable_summaries(Wg_hg_gf1, "glimpseNet_wts_hiddenGlimpse_glimpseFeature1")
+    variable_summaries(Wg_hl_gf1, "glimpseNet_wts_hiddenLocation_glimpseFeature1")
+    variable_summaries(Bg_hlhg_gf1, "glimpseNet_bias_hGlimpse_hLocs_glimpseFeature1")
 
-        variable_summaries(Wc_g_h, "coreNet_wts_glimpse_hidden")
-        variable_summaries(Bc_g_h, "coreNet_bias_glimpse_hidden")
+    variable_summaries(Wc_g_h, "coreNet_wts_glimpse_hidden")
+    variable_summaries(Bc_g_h, "coreNet_bias_glimpse_hidden")
 
-        variable_summaries(Wb_h_b, "baselineNet_wts_hiddenState_baseline")
-        variable_summaries(Bb_h_b, "baselineNet_bias_hiddenState_baseline")
+    variable_summaries(Wb_h_b, "baselineNet_wts_hiddenState_baseline")
+    variable_summaries(Bb_h_b, "baselineNet_bias_hiddenState_baseline")
 
-        variable_summaries(Wl_h_l, "locationNet_wts_hidden_location")
+    variable_summaries(Wl_h_l, "locationNet_wts_hidden_location")
 
-        variable_summaries(Wa_h_a, 'actionNet_wts_hidden_action')
-        variable_summaries(Ba_h_a, 'actionNet_bias_hidden_action')
+    variable_summaries(Wa_h_a, 'actionNet_wts_hidden_action')
+    variable_summaries(Ba_h_a, 'actionNet_bias_hidden_action')
 
-        # tensorboard visualization for the performance metrics
-        tf.summary.scalar("reconstructionCost", reconstructionCost)
-        tf.summary.scalar("reward", reward)
-        tf.summary.scalar("cost", cost)
-        tf.summary.scalar("mean(b)", avg_b)
-        tf.summary.scalar("mean(R - b)", rminusb)
+    # tensorboard visualization for the performance metrics
+    tf.summary.scalar("reconstructionCost", reconstructionCost)
+    tf.summary.scalar("reward", reward)
+    tf.summary.scalar("cost", cost)
+    tf.summary.scalar("mean(b)", avg_b)
+    tf.summary.scalar("mean(R - b)", rminusb)
 
-        def draw_bbox(image_path, locations):
-            locations = toMnistCoordinates(locations)
-            image_path = np.squeeze(np.uint8(image_path), -1)
-            im = Image.fromarray(np.uint8(image_path), "L")
-            im = im.convert("RGB")
-            try:
-                font = ImageFont.truetype('arial.ttf', 3)
-            except IOError:
-                font = ImageFont.load_default()
-            draw = ImageDraw.Draw(im)
-            colors = ['red', 'yellow', 'blue', 'green', 'pink', 'purple']
-            for index, location in enumerate(locations, 1):
-                # text_bottom = location[0] + 6 + 3
-                left = location[1] - 6
-                right = location[1] + 6
-                top = location[0] + 6
-                bottom = location[0] - 6
-                text_width, text_height = font.getsize(str(index))
-                # margin = np.ceil(0.05 * text_height)
-                # draw.rectangle(
-                #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
-                #                                                       text_bottom)],
-                #     fill=colors[index-1])
-                # draw.text(
-                #     (left + margin, text_bottom - text_height - margin),
-                #     str(index),
-                #     fill='black',
-                #     font=font)
+    def draw_bbox(image_path, locations):
+        locations = toMnistCoordinates(locations)
+        image_path = np.squeeze(np.uint8(image_path), -1)
+        im = Image.fromarray(np.uint8(image_path), "L")
+        im = im.convert("RGB")
+        try:
+            font = ImageFont.truetype('arial.ttf', 3)
+        except IOError:
+            font = ImageFont.load_default()
+        draw = ImageDraw.Draw(im)
+        colors = ['red', 'yellow', 'blue', 'green', 'pink', 'purple']
+        for index, location in enumerate(locations, 1):
+            # text_bottom = location[0] + 6 + 3
+            left = location[1] - 6
+            right = location[1] + 6
+            top = location[0] + 6
+            bottom = location[0] - 6
+            text_width, text_height = font.getsize(str(index))
+            # margin = np.ceil(0.05 * text_height)
+            # draw.rectangle(
+            #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
+            #                                                       text_bottom)],
+            #     fill=colors[index-1])
+            # draw.text(
+            #     (left + margin, text_bottom - text_height - margin),
+            #     str(index),
+            #     fill='black',
+            #     font=font)
 
-                draw.line([(left, top), (left, bottom), (right, bottom),
-                           (right, top), (left, top)], width=1, fill=colors[index-1])
-            return im
-
-
-        def draw_boxes(image_and_detections):
-            """Draws boxes on image."""
-            image_with_boxes = tf.py_func(draw_bbox, image_and_detections,
-                                          tf.uint8)
-            return image_with_boxes
-
-        image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
-        image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
-        images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
-
-        summary_op = tf.summary.merge_all()
-        ####################################### START RUNNING THE MODEL #######################################
-
-        sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-        sess_config.gpu_options.allow_growth = True
-        sess = tf.Session(config=sess_config)
-
-        saver = tf.train.Saver()
-        b_fetched = np.zeros((batch_size, (nGlimpses)*2))
-
-        init = tf.global_variables_initializer()
-        sess.run(init)
-
-        if eval_only:
-            saver.restore(sess, load_path)
-            evaluate1()
-        else:
-            summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
-
-            if draw:
-                fig = plt.figure(1)
-                txt = fig.suptitle("-", fontsize=36, fontweight='bold')
-                plt.ion()
-                plt.show()
-                plt.subplots_adjust(top=0.7)
-                plotImgs = []
-
-            if drawReconsturction:
-                fig = plt.figure(2)
-                txt = fig.suptitle("-", fontsize=36, fontweight='bold')
-                plt.ion()
-                plt.show()
-
-            if preTraining:
-                for epoch_r in range(1,preTraining_epoch):
-                    nextX, _ = dataset.train.next_batch(batch_size)
-                    nextX_orig = nextX
-                    if translateMnist:
-                        nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
-
-                    fetches_r = [reconstructionCost, reconstruction, train_op_r]
-
-                    reconstructionCost_fetched, reconstruction_fetched, train_op_r_fetched = sess.run(fetches_r, feed_dict={inputs_placeholder: nextX})
-
-                    if epoch_r % 20 == 0:
-                        print(('Step %d: reconstructionCost = %.5f' % (epoch_r, reconstructionCost_fetched)))
-                        if epoch_r % 100 == 0:
-                            if drawReconsturction:
-                                fig = plt.figure(2)
-
-                                plt.subplot(1, 2, 1)
-                                plt.imshow(np.reshape(nextX[0, :], [img_size, img_size]),
-                                           cmap=plt.get_cmap('gray'), interpolation="nearest")
-                                plt.ylim((img_size - 1, 0))
-                                plt.xlim((0, img_size - 1))
-
-                                plt.subplot(1, 2, 2)
-                                plt.imshow(np.reshape(reconstruction_fetched[0, :], [img_size, img_size]),
-                                           cmap=plt.get_cmap('gray'), interpolation="nearest")
-                                plt.ylim((img_size - 1, 0))
-                                plt.xlim((0, img_size - 1))
-                                plt.draw()
-                                plt.pause(0.0001)
-                                # plt.show()
+            draw.line([(left, top), (left, bottom), (right, bottom),
+                       (right, top), (left, top)], width=1, fill=colors[index-1])
+        return im
 
 
-            print ("number of mini_batches: ", (dataset.train.num_examples//batch_size))
-            num_batch = dataset.train.num_examples//batch_size
-            # training
-            for epoch in range(start_step + 1, max_iters):
-                start_time = time.time()
+    def draw_boxes(image_and_detections):
+        """Draws boxes on image."""
+        image_with_boxes = tf.py_func(draw_bbox, image_and_detections,
+                                      tf.uint8)
+        return image_with_boxes
 
-                # get the next batch of examples
-                nextX, nextY = dataset.train.next_batch(batch_size)
+    image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
+    image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
+    images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
+
+    summary_op = tf.summary.merge_all()
+    ####################################### START RUNNING THE MODEL #######################################
+
+    sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    sess_config.gpu_options.allow_growth = True
+    sess = tf.Session(config=sess_config)
+
+    saver = tf.train.Saver()
+    b_fetched = np.zeros((batch_size, (nGlimpses)*2))
+
+    init = tf.global_variables_initializer()
+    sess.run(init)
+
+    if eval_only:
+        saver.restore(sess, load_path)
+        evaluate1()
+    else:
+        summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
+
+        if draw:
+            fig = plt.figure(1)
+            txt = fig.suptitle("-", fontsize=36, fontweight='bold')
+            plt.ion()
+            plt.show()
+            plt.subplots_adjust(top=0.7)
+            plotImgs = []
+
+        if drawReconsturction:
+            fig = plt.figure(2)
+            txt = fig.suptitle("-", fontsize=36, fontweight='bold')
+            plt.ion()
+            plt.show()
+
+        if preTraining:
+            for epoch_r in range(1,preTraining_epoch):
+                nextX, _ = dataset.train.next_batch(batch_size)
                 nextX_orig = nextX
                 if translateMnist:
-                    if mix_training:
-                        if epoch % 3 == 0:
-                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
-                        elif epoch % 3 == 1:
-                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE//2, img_size)
-                        else:
-                            nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE*2, img_size)
-                    else:
-                        nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
+                    nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
 
-                feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
-                             onehot_labels_placeholder: dense_to_one_hot(nextY)}
+                fetches_r = [reconstructionCost, reconstruction, train_op_r]
 
-                fetches = [train_op, cost, reward, predicted_labels, correct_labels, glimpse_images, avg_b, rminusb, \
-                           mean_locs, sampled_locs, lr]
-                # feed them to the model
-                results = sess.run(fetches, feed_dict=feed_dict)
+                reconstructionCost_fetched, reconstruction_fetched, train_op_r_fetched = sess.run(fetches_r, feed_dict={inputs_placeholder: nextX})
 
-                _, cost_fetched, reward_fetched, prediction_labels_fetched, correct_labels_fetched, glimpse_images_fetched, \
-                avg_b_fetched, rminusb_fetched, mean_locs_fetched, sampled_locs_fetched, lr_fetched = results
+                if epoch_r % 20 == 0:
+                    print(('Step %d: reconstructionCost = %.5f' % (epoch_r, reconstructionCost_fetched)))
+                    if epoch_r % 100 == 0:
+                        if drawReconsturction:
+                            fig = plt.figure(2)
 
+                            plt.subplot(1, 2, 1)
+                            plt.imshow(np.reshape(nextX[0, :], [img_size, img_size]),
+                                       cmap=plt.get_cmap('gray'), interpolation="nearest")
+                            plt.ylim((img_size - 1, 0))
+                            plt.xlim((0, img_size - 1))
 
-                duration = time.time() - start_time
-
-                if epoch % 20 == 0:
-                    print(('Step %d: cost = %.5f reward = %.5f (%.3f sec) b = %.5f R-b = %.5f, LR = %.5f'
-                          % (epoch, cost_fetched, reward_fetched, duration, avg_b_fetched, rminusb_fetched, lr_fetched)))
-                    summary_str = sess.run(summary_op, feed_dict=feed_dict)
-                    summary_writer.add_summary(summary_str, epoch)
-                    # if saveImgs:
-                    #     plt.savefig(imgsFolderName + simulationName + '_ep%.6d.png' % (epoch))
-
-                    if epoch % 1000 == 0:
-                        saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
-                        evaluate(summary_writer, epoch)
-                    if epoch % 5000 == 0:
-                        image_summary = tf.summary.image("translated_mnist{:06d}".format(epoch), images, 2)
-                        sum_img = sess.run(image_summary, feed_dict=feed_dict)
-                        summary_writer.add_summary(sum_img, epoch)
-
-                    ##### DRAW WINDOW ################
-                    f_glimpse_images = np.reshape(glimpse_images_fetched, \
-                                                  (nGlimpses, batch_size, depth, sensorBandwidth, sensorBandwidth))
-
-                    if draw:
-                        if animate:
-                            fillList = False
-                            if len(plotImgs) == 0:
-                                fillList = True
-
-                            # display the first image in the in mini-batch
-                            nCols = depth+1
-                            plt.subplot2grid((depth, nCols), (0, 1), rowspan=depth, colspan=depth)
-                            # display the entire image
-                            plotWholeImg(nextX[0, :], img_size, sampled_locs_fetched)
-
-                            # display the glimpses
-                            for y in range(nGlimpses):
-                                txt.set_text('Epoch: %.6d \nPrediction: %i -- Truth: %i\nStep: %i/%i'
-                                             % (epoch, prediction_labels_fetched[0], correct_labels_fetched[0], (y + 1), nGlimpses))
-
-                                for x in range(depth):
-                                    plt.subplot(depth, nCols, 1 + nCols * x)
-                                    if fillList:
-                                        plotImg = plt.imshow(f_glimpse_images[y, 0, x], cmap=plt.get_cmap('gray'),
-                                                             interpolation="nearest")
-                                        plotImg.autoscale()
-                                        plotImgs.append(plotImg)
-                                    else:
-                                        plotImgs[x].set_data(f_glimpse_images[y, 0, x])
-                                        plotImgs[x].autoscale()
-                                fillList = False
-
-                                # fig.canvas.draw()
-                                time.sleep(0.1)
-                                plt.pause(0.00005)
-
-                        else:
-                            txt.set_text('PREDICTION: %i\nTRUTH: %i' % (prediction_labels_fetched[0], correct_labels_fetched[0]))
-                            for x in range(depth):
-                                for y in range(nGlimpses):
-                                    plt.subplot(depth, nGlimpses, x * nGlimpses + y + 1)
-                                    plt.imshow(f_glimpse_images[y, 0, x], cmap=plt.get_cmap('gray'), interpolation="nearest")
-
+                            plt.subplot(1, 2, 2)
+                            plt.imshow(np.reshape(reconstruction_fetched[0, :], [img_size, img_size]),
+                                       cmap=plt.get_cmap('gray'), interpolation="nearest")
+                            plt.ylim((img_size - 1, 0))
+                            plt.xlim((0, img_size - 1))
                             plt.draw()
-                            time.sleep(0.05)
                             plt.pause(0.0001)
+                            # plt.show()
 
-        sess.close()
+
+        print ("number of mini_batches: ", (dataset.train.num_examples//batch_size))
+        num_batch = dataset.train.num_examples//batch_size
+        # training
+        for epoch in range(start_step + 1, max_iters):
+            start_time = time.time()
+
+            # get the next batch of examples
+            nextX, nextY = dataset.train.next_batch(batch_size)
+            nextX_orig = nextX
+            if translateMnist:
+                if mix_training:
+                    list_scales = [int(0.5*MNIST_SIZE), int(0.75*MNIST_SIZE), MNIST_SIZE, 1.5*MNIST_SIZE, 2*MNIST_SIZE]
+                    nextX, nextX_coord = convertTranslated_mix(nextX, MNIST_SIZE, list_scales, img_size)
+                else:
+                    nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE, translateMnist_scale, img_size)
+
+            feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
+                         onehot_labels_placeholder: dense_to_one_hot(nextY)}
+
+            fetches = [train_op, cost, reward, predicted_labels, correct_labels, glimpse_images, avg_b, rminusb, \
+                       mean_locs, sampled_locs, lr]
+            # feed them to the model
+            results = sess.run(fetches, feed_dict=feed_dict)
+
+            _, cost_fetched, reward_fetched, prediction_labels_fetched, correct_labels_fetched, glimpse_images_fetched, \
+            avg_b_fetched, rminusb_fetched, mean_locs_fetched, sampled_locs_fetched, lr_fetched = results
+
+
+            duration = time.time() - start_time
+
+            if epoch % 20 == 0:
+                print(('Step %d: cost = %.5f reward = %.5f (%.3f sec) b = %.5f R-b = %.5f, LR = %.5f'
+                      % (epoch, cost_fetched, reward_fetched, duration, avg_b_fetched, rminusb_fetched, lr_fetched)))
+                summary_str = sess.run(summary_op, feed_dict=feed_dict)
+                summary_writer.add_summary(summary_str, epoch)
+                # if saveImgs:
+                #     plt.savefig(imgsFolderName + simulationName + '_ep%.6d.png' % (epoch))
+
+                if epoch % 1000 == 0:
+                    saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
+                    evaluate(summary_writer, epoch)
+                if epoch % 5000 == 0:
+                    image_summary = tf.summary.image("translated_mnist{:06d}".format(epoch), images, 2)
+                    sum_img = sess.run(image_summary, feed_dict=feed_dict)
+                    summary_writer.add_summary(sum_img, epoch)
+
+                ##### DRAW WINDOW ################
+                f_glimpse_images = np.reshape(glimpse_images_fetched, \
+                                              (nGlimpses, batch_size, depth, sensorBandwidth, sensorBandwidth))
+
+                if draw:
+                    if animate:
+                        fillList = False
+                        if len(plotImgs) == 0:
+                            fillList = True
+
+                        # display the first image in the in mini-batch
+                        nCols = depth+1
+                        plt.subplot2grid((depth, nCols), (0, 1), rowspan=depth, colspan=depth)
+                        # display the entire image
+                        plotWholeImg(nextX[0, :], img_size, sampled_locs_fetched)
+
+                        # display the glimpses
+                        for y in range(nGlimpses):
+                            txt.set_text('Epoch: %.6d \nPrediction: %i -- Truth: %i\nStep: %i/%i'
+                                         % (epoch, prediction_labels_fetched[0], correct_labels_fetched[0], (y + 1), nGlimpses))
+
+                            for x in range(depth):
+                                plt.subplot(depth, nCols, 1 + nCols * x)
+                                if fillList:
+                                    plotImg = plt.imshow(f_glimpse_images[y, 0, x], cmap=plt.get_cmap('gray'),
+                                                         interpolation="nearest")
+                                    plotImg.autoscale()
+                                    plotImgs.append(plotImg)
+                                else:
+                                    plotImgs[x].set_data(f_glimpse_images[y, 0, x])
+                                    plotImgs[x].autoscale()
+                            fillList = False
+
+                            # fig.canvas.draw()
+                            time.sleep(0.1)
+                            plt.pause(0.00005)
+
+                    else:
+                        txt.set_text('PREDICTION: %i\nTRUTH: %i' % (prediction_labels_fetched[0], correct_labels_fetched[0]))
+                        for x in range(depth):
+                            for y in range(nGlimpses):
+                                plt.subplot(depth, nGlimpses, x * nGlimpses + y + 1)
+                                plt.imshow(f_glimpse_images[y, 0, x], cmap=plt.get_cmap('gray'), interpolation="nearest")
+
+                        plt.draw()
+                        time.sleep(0.05)
+                        plt.pause(0.0001)
+
+    sess.close()
