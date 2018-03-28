@@ -533,8 +533,8 @@ def convertCluttered(images, initImgSize, finalImgSize):
             image[finalImgSize-14:, :14] = clutter
         else:
             image[:14,:14] = clutter
-        plt.imshow(image, cmap='gray')
-        plt.show()
+        #plt.imshow(image, cmap='gray')
+        #plt.show()
         newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
