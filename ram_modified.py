@@ -51,7 +51,7 @@ else:
 start_step = 0
 #load_path = None
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
-load_path = './chckPts/{}/save1000.ckpt'.format(simulationName)
+load_path = './chckPts/{}/save999000.ckpt'.format(simulationName)
 # to enable visualization, set draw to True
 eval_only = True
 draw = False
@@ -284,7 +284,10 @@ def model():
     sampled_locs.append(initial_loc)
 
     # get the input using the input network
-    initial_glimpse = get_glimpse_conv(initial_loc)
+    if mode == 'baseline':
+        initial_glimpse = get_glimpse(initial_loc)
+    else:
+        initial_glimpse = get_glimpse_conv(initial_loc)
 
     # set up the recurrent structure
     inputs = [0] * nGlimpses
