@@ -51,9 +51,9 @@ else:
 start_step = 0
 #load_path = None
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
-load_path = './chckPts/test3/save1000.ckpt'
+load_path = './chckPts/{}/save1000.ckpt'.format(simulationName)
 # to enable visualization, set draw to True
-eval_only = False
+eval_only = True
 draw = False
 animate = False
 
@@ -420,7 +420,7 @@ def evaluate(summary_writer, epoch):
     summary_writer.flush()
 
 
-def evaluate1():
+def evaluate1(scale_size):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0
@@ -428,15 +428,32 @@ def evaluate1():
     for i in range(batches_in_epoch):
         nextX, nextY = dataset.test.next_batch(batch_size)
         if translateMnist:
-            nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
+            nextX, _ = convertTranslated(nextX, MNIST_SIZE, scale_size, img_size)
         feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
                      onehot_labels_placeholder: dense_to_one_hot(nextY)}
         r = sess.run(reward, feed_dict=feed_dict)
         accuracy += r
 
     accuracy /= batches_in_epoch
-    print(("ACCURACY: " + str(accuracy)))
+    print(("{} ACCURACY: ".format(scale_size) + str(accuracy)))
 
+
+def evaluate_cluttered():
+    data = dataset.test
+    batches_in_epoch = len(data._images) // batch_size
+    accuracy = 0
+
+    for i in range(batches_in_epoch):
+        nextX, nextY = dataset.test.next_batch(batch_size)
+        if translateMnist:
+            nextX, _ = convertCluttered(nextX, MNIST_SIZE, img_size)
+        feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
+                     onehot_labels_placeholder: dense_to_one_hot(nextY)}
+        r = sess.run(reward, feed_dict=feed_dict)
+        accuracy += r
+
+    accuracy /= batches_in_epoch
+    print(("{} ACCURACY: ".format('cluttered') + str(accuracy)))
 
 def convertTranslated(images, initImgSize, transSize, finalImgSize):
     size_diff = finalImgSize - transSize
@@ -706,7 +723,12 @@ with tf.Graph().as_default():
 
     if eval_only:
         saver.restore(sess, load_path)
-        evaluate1()
+        evaluate1(14)
+        evaluate1(21)
+        evaluate1(28)
+        evaluate1(42)
+        evaluate1(56)
+        evaluate_cluttered()
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 
