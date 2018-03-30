@@ -53,7 +53,7 @@ start_step = 0
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
 load_path = './chckPts/{}/save999000.ckpt'.format(simulationName)
 # to enable visualization, set draw to True
-eval_only = True
+eval_only = False
 draw = False
 animate = False
 
@@ -61,7 +61,7 @@ mix_training = False
 
 # conditions
 translateMnist = 1
-translateMnist_scale = 28
+translateMnist_scale = 14
 eyeCentered = 0
 
 preTraining = 0
@@ -423,7 +423,7 @@ def evaluate(summary_writer, epoch):
     summary_writer.flush()
 
 
-def evaluate1(scale_size):
+def evaluate_only(scale_size):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0
@@ -492,9 +492,8 @@ def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
         image = np.reshape(image, (initImgSize, initImgSize))
         image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
         # generate and save random coordinates
-        Random1 = Random(217)
-        randX = Random1.randint(0, size_diff)
-        randY = Random1.randint(0, size_diff)
+        randX = np.random.randint(0, size_diff)
+        randY = np.random.randint(0, size_diff)
         imgCoord[k,:] = np.array([randX, randY])
         # padding
         image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
@@ -504,38 +503,48 @@ def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
 
     return newimages, imgCoord
 
-def convertCluttered(images, initImgSize, finalImgSize):
-    size_diff = finalImgSize - initImgSize
+
+def convertCluttered(images, initImgSize, transSize, finalImgSize):
+    clutter_size = int(MNIST_SIZE/2)
+    size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
     imgCoord = np.zeros([batch_size,2])
     for k in range(batch_size):
         image = images[k, :]
         image = np.reshape(image, (initImgSize, initImgSize))
+        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
         # generate and save random coordinates
         # Random1 = Random(217)
-        randX = np.random.randint(0, size_diff-14)
-        randY = np.random.randint(0, size_diff-14)
-        imgCoord[k,:] = np.array([randX, randY])
+        randX_img = np.random.randint(0, size_diff)
+        randY_img = np.random.randint(0, size_diff)
+        imgCoord[k,:] = np.array([randX_img, randY_img])
         #clutter
         clutter = np.reshape(images[np.random.randint(0,batch_size), :], (initImgSize, initImgSize))
         num1 = np.random.randint(0,1)
         num2 = np.random.randint(0,1)
-        clutter = clutter[num1*14:num1*14+14, num2*14:num2*14+14]
+        # if the clutter cannot fit
+        empty_width = int((finalImgSize - transSize)/2)
+        if empty_width < clutter_size:
+            clutter_size = empty_width
+        clutter = clutter[num1*clutter_size:num1*clutter_size+clutter_size, num2*clutter_size:num2*clutter_size+clutter_size]
+
+
         # padding
-        num3 = np.random.randint(0, 1)
-        num4 = np.random.randint(0, 1)
-        image = np.lib.pad(image, ((randX + num3*14, size_diff-14-randX + (1-num3)*14), (randY + num4*14, size_diff-14-randY+(1-num4)*14)), 'constant', constant_values = (0))
-        if not num3 and not num4:
-            image[finalImgSize-14:, finalImgSize-14:] = clutter
-        elif num3 and not num4:
-            image[:14, finalImgSize-14:] = clutter
-        elif not num3 and num4:
-            image[finalImgSize-14:, :14] = clutter
-        else:
-            image[:14,:14] = clutter
-        #plt.imshow(image, cmap='gray')
-        #plt.show()
-        newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
+        num3 = np.random.randint(0, finalImgSize - clutter_size)
+        num4 = np.random.randint(0, finalImgSize - clutter_size)
+        while True:
+            if randX_img - clutter_size < num3 < randX_img + transSize and randY_img - clutter_size < num4 < randY_img + transSize:
+                num3 = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
+                num4 = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
+            else:
+                break
+        image_pad = np.zeros((finalImgSize, finalImgSize))
+        image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
+        image_pad[num3:num3+clutter_size, num4:num4+clutter_size] = clutter
+        plt.imshow(image_pad, cmap='gray')
+        plt.imshow(clutter, cmap='gray')
+        plt.show()
+        newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
 
@@ -684,18 +693,6 @@ with tf.Graph().as_default():
             right = location[1] + 6
             top = location[0] + 6
             bottom = location[0] - 6
-            text_width, text_height = font.getsize(str(index))
-            # margin = np.ceil(0.05 * text_height)
-            # draw.rectangle(
-            #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
-            #                                                       text_bottom)],
-            #     fill=colors[index-1])
-            # draw.text(
-            #     (left + margin, text_bottom - text_height - margin),
-            #     str(index),
-            #     fill='black',
-            #     font=font)
-
             draw.line([(left, top), (left, bottom), (right, bottom),
                        (right, top), (left, top)], width=1, fill=colors[index-1])
         return im
@@ -707,9 +704,9 @@ with tf.Graph().as_default():
                                       tf.uint8)
         return image_with_boxes
 
-    image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
-    image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
-    images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
+    # image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
+    # image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
+    # images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
 
     summary_op = tf.summary.merge_all()
     ####################################### START RUNNING THE MODEL #######################################
@@ -726,11 +723,11 @@ with tf.Graph().as_default():
 
     if eval_only:
         saver.restore(sess, load_path)
-        evaluate1(14)
-        evaluate1(21)
-        evaluate1(28)
-        evaluate1(42)
-        evaluate1(56)
+        evaluate_only(14)
+        evaluate_only(21)
+        evaluate_only(28)
+        evaluate_only(42)
+        evaluate_only(56)
         evaluate_cluttered()
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
@@ -797,6 +794,7 @@ with tf.Graph().as_default():
                     nextX, nextX_coord = convertTranslated_mix(nextX, MNIST_SIZE, list_scales, img_size)
                 else:
                     nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
+                    # nextX, nextX_coord = convertCluttered(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
 
             feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
                          onehot_labels_placeholder: dense_to_one_hot(nextY)}
@@ -812,7 +810,7 @@ with tf.Graph().as_default():
 
             duration = time.time() - start_time
 
-            if epoch % 20 == 0:
+            if epoch % 50 == 0:
                 print(('Step %d: cost = %.5f reward = %.5f (%.3f sec) b = %.5f R-b = %.5f, LR = %.5f'
                       % (epoch, cost_fetched, reward_fetched, duration, avg_b_fetched, rminusb_fetched, lr_fetched)))
                 summary_str = sess.run(summary_op, feed_dict=feed_dict)
@@ -820,13 +818,13 @@ with tf.Graph().as_default():
                 # if saveImgs:
                 #     plt.savefig(imgsFolderName + simulationName + '_ep%.6d.png' % (epoch))
 
-                if epoch % 1000 == 0:
+                if epoch % 5000 == 0:
                     saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
                     evaluate(summary_writer, epoch)
-                if epoch % 5000 == 0:
-                    image_summary = tf.summary.image("translated_mnist{:06d}".format(epoch), images, 2)
-                    sum_img = sess.run(image_summary, feed_dict=feed_dict)
-                    summary_writer.add_summary(sum_img, epoch)
+                # if epoch % 5000 == 0:
+                #     image_summary = tf.summary.image("translated_mnist{:06d}".format(epoch), images, 2)
+                #     sum_img = sess.run(image_summary, feed_dict=feed_dict)
+                #     summary_writer.add_summary(sum_img, epoch)
 
                 ##### DRAW WINDOW ################
                 f_glimpse_images = np.reshape(glimpse_images_fetched, \
