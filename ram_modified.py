@@ -541,9 +541,8 @@ def convertCluttered(images, initImgSize, transSize, finalImgSize):
         image_pad = np.zeros((finalImgSize, finalImgSize))
         image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
         image_pad[num3:num3+clutter_size, num4:num4+clutter_size] = clutter
-        plt.imshow(image_pad, cmap='gray')
-        plt.imshow(clutter, cmap='gray')
-        plt.show()
+        # plt.imshow(image_pad, cmap='gray')
+        # plt.show()
         newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
@@ -793,8 +792,8 @@ with tf.Graph().as_default():
                     list_scales = [int(0.5*MNIST_SIZE), int(0.75*MNIST_SIZE), MNIST_SIZE, int(1.5*MNIST_SIZE), int(2*MNIST_SIZE)]
                     nextX, nextX_coord = convertTranslated_mix(nextX, MNIST_SIZE, list_scales, img_size)
                 else:
-                    nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
-                    # nextX, nextX_coord = convertCluttered(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
+                    #nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
+                    nextX, nextX_coord = convertCluttered(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
 
             feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \
                          onehot_labels_placeholder: dense_to_one_hot(nextY)}
