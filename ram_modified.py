@@ -61,7 +61,7 @@ mix_training = False
 
 # conditions
 translateMnist = 1
-translateMnist_scale = 14
+translateMnist_scale = 56
 eyeCentered = 0
 
 preTraining = 0
@@ -520,29 +520,42 @@ def convertCluttered(images, initImgSize, transSize, finalImgSize):
         imgCoord[k,:] = np.array([randX_img, randY_img])
         #clutter
         clutter = np.reshape(images[np.random.randint(0,batch_size), :], (initImgSize, initImgSize))
-        num1 = np.random.randint(0,1)
-        num2 = np.random.randint(0,1)
-        # if the clutter cannot fit
-        empty_width = int((finalImgSize - transSize)/2)
-        if empty_width < clutter_size:
-            clutter_size = empty_width
+        num1 = np.random.randint(0,2)
+        num2 = np.random.randint(0,2)
         clutter = clutter[num1*clutter_size:num1*clutter_size+clutter_size, num2*clutter_size:num2*clutter_size+clutter_size]
 
-
-        # padding
-        num3 = np.random.randint(0, finalImgSize - clutter_size)
-        num4 = np.random.randint(0, finalImgSize - clutter_size)
-        while True:
-            if randX_img - clutter_size < num3 < randX_img + transSize and randY_img - clutter_size < num4 < randY_img + transSize:
-                num3 = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
-                num4 = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
+        # if the clutter cannot fit
+        if size_diff/2 < clutter_size:
+            rand_num = np.random.randint(0,2)
+            if rand_num:
+                if randX_img > size_diff/2:
+                    clutter_x = 0
+                else:
+                    clutter_x = finalImgSize - clutter_size
+                clutter_y = np.random.randint(0, finalImgSize - clutter_size)
             else:
-                break
+                if randY_img > size_diff/2:
+                    clutter_y = 0
+                else:
+                    clutter_y = finalImgSize - clutter_size
+                clutter_x = np.random.randint(0, finalImgSize - clutter_size)
+        else:
+            # padding
+            clutter_x = np.random.randint(0, finalImgSize - clutter_size)
+            clutter_y = np.random.randint(0, finalImgSize - clutter_size)
+            while True:
+                if randX_img - clutter_size < clutter_x < randX_img + transSize and randY_img - clutter_size < clutter_y < randY_img + transSize:
+                    clutter_x = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
+                    clutter_y = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
+                else:
+                    break
+        print(randX_img, randY_img)
+        print(clutter_x, clutter_y)
         image_pad = np.zeros((finalImgSize, finalImgSize))
+        image_pad[clutter_x:clutter_x+clutter_size, clutter_y:clutter_y+clutter_size] = clutter
         image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
-        image_pad[num3:num3+clutter_size, num4:num4+clutter_size] = clutter
-        # plt.imshow(image_pad, cmap='gray')
-        # plt.show()
+        plt.imshow(image_pad, cmap='gray')
+        plt.show()
         newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
