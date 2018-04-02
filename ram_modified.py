@@ -19,7 +19,7 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 mode='baseline'
 # mode='conv'
-# mode='conv_concat'
+# mode='concat'
 
 try:
     xrange
@@ -49,11 +49,13 @@ else:
 
 
 start_step = 0
-#load_path = None
-load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
-load_path = './chckPts/{}/save999000.ckpt'.format(simulationName)
+
+scales = ['0.5', '0.75', '1', '1.5', '2']
+load_paths = []
+for scale in scales:
+    load_paths += ['./chckPts/{}_{}_nc/save995000.ckpt'.format(mode, scale)]
 # to enable visualization, set draw to True
-eval_only = False
+eval_only = True
 draw = False
 animate = False
 
@@ -213,7 +215,7 @@ def get_glimpse_conv(loc):
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
     conv3d_reshape = tf.reshape(conv3d, (batch_size, 64))
     act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
-    if mode == 'conv_concat':
+    if mode == 'concat':
         all_scales = tf.unstack(glimpse_input, axis=1)
         last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
         loc_scale = tf.concat((loc, last_scale), axis=1)
@@ -441,7 +443,7 @@ def evaluate_only(scale_size):
     print(("{} ACCURACY: ".format(scale_size) + str(accuracy)))
 
 
-def evaluate_cluttered():
+def evaluate_cluttered(trans_size):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0
@@ -449,14 +451,14 @@ def evaluate_cluttered():
     for i in range(batches_in_epoch):
         nextX, nextY = dataset.test.next_batch(batch_size)
         if translateMnist:
-            nextX, _ = convertCluttered(nextX, MNIST_SIZE, img_size)
+            nextX, _ = convertCluttered(nextX, MNIST_SIZE, trans_size, img_size)
         feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
                      onehot_labels_placeholder: dense_to_one_hot(nextY)}
         r = sess.run(reward, feed_dict=feed_dict)
         accuracy += r
 
     accuracy /= batches_in_epoch
-    print(("{} ACCURACY: ".format('cluttered') + str(accuracy)))
+    print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
 
 def convertTranslated(images, initImgSize, transSize, finalImgSize):
     size_diff = finalImgSize - transSize
@@ -615,7 +617,7 @@ with tf.Graph().as_default():
     # the 1st captical letter: weights or bias (W = weights, B = bias)
     # the 2nd lowercase letter: the network (e.g.: g = glimpse network)
     # the 3rd and 4th letter(s): input-output mapping, which is clearly written in the variable name argument
-    if mode == 'conv_concat':
+    if mode == 'concat':
         Wg_l_h = weight_variable((146, hl_size), "glimpseNet_wts_location_hidden", True)
     else:
         Wg_l_h = weight_variable((2, hl_size), "glimpseNet_wts_location_hidden", True)
@@ -732,13 +734,19 @@ with tf.Graph().as_default():
     sess.run(init)
 
     if eval_only:
-        saver.restore(sess, load_path)
-        evaluate_only(14)
-        evaluate_only(21)
-        evaluate_only(28)
-        evaluate_only(42)
-        evaluate_only(56)
-        evaluate_cluttered()
+        for path in load_paths:
+            saver.restore(sess, path)
+            print(path)
+            evaluate_only(14)
+            evaluate_only(21)
+            evaluate_only(28)
+            evaluate_only(42)
+            evaluate_only(56)
+            evaluate_cluttered(14)
+            evaluate_cluttered(21)
+            evaluate_cluttered(28)
+            evaluate_cluttered(42)
+            evaluate_cluttered(56)
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 
