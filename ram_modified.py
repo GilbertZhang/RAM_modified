@@ -549,13 +549,11 @@ def convertCluttered(images, initImgSize, transSize, finalImgSize):
                     clutter_y = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
                 else:
                     break
-        print(randX_img, randY_img)
-        print(clutter_x, clutter_y)
         image_pad = np.zeros((finalImgSize, finalImgSize))
         image_pad[clutter_x:clutter_x+clutter_size, clutter_y:clutter_y+clutter_size] = clutter
         image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
-        plt.imshow(image_pad, cmap='gray')
-        plt.show()
+        # plt.imshow(image_pad, cmap='gray')
+        # plt.show()
         newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
