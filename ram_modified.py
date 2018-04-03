@@ -53,7 +53,7 @@ start_step = 0
 scales = ['0.5', '0.75', '1', '1.5', '2']
 load_paths = []
 for scale in scales:
-    load_paths += ['./chckPts/{}_{}_nc/save995000.ckpt'.format(mode, scale)]
+    load_paths += ['./chckPts/{}_{}_c'.format(mode, scale)]
 # to enable visualization, set draw to True
 eval_only = True
 draw = False
@@ -735,8 +735,9 @@ with tf.Graph().as_default():
 
     if eval_only:
         for path in load_paths:
-            saver.restore(sess, path)
-            print(path)
+            ckpt_path = tf.train.latest_checkpoint(path)
+            saver.restore(sess, ckpt_path)
+            print(ckpt_path)
             evaluate_only(14)
             evaluate_only(21)
             evaluate_only(28)
