@@ -2,19 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d63d7edb-6044-4438-b81d-7ee4c9184a97" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/gen_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/ram_modified.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ram_modified.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prediction.py" beforeDir="false" afterPath="$PROJECT_DIR$/constant.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ram.py" beforeDir="false" afterPath="$PROJECT_DIR$/old_script/ram.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ram.py.bak" beforeDir="false" afterPath="$PROJECT_DIR$/old_script/ram.py.bak" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ram_modified.py" beforeDir="false" afterPath="$PROJECT_DIR$/ram_modified.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ram_up.py" beforeDir="false" afterPath="$PROJECT_DIR$/old_script/ram_up.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/report.txt" beforeDir="false" afterPath="$PROJECT_DIR$/old_script/report.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tf_upgrade.py" beforeDir="false" afterPath="$PROJECT_DIR$/old_script/tf_upgrade.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/constant.py" beforeDir="false" afterPath="$PROJECT_DIR$/constant.py" afterDir="false" />
     </list>
     <ignored mask="rest-client.private.env.json" />
     <ignored mask="http-client.private.env.json" />
@@ -41,11 +30,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="constant.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="constant.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/constant.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="54">
-              <caret line="3" column="17" selection-start-line="3" selection-start-column="17" selection-end-line="3" selection-end-column="17" />
+            <state relative-caret-position="198">
+              <caret line="11" column="20" lean-forward="true" selection-start-line="11" selection-start-column="20" selection-end-line="11" selection-end-column="20" />
             </state>
           </provider>
         </entry>
@@ -59,11 +48,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ram_modified.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="ram_modified.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ram_modified.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="9936">
-              <caret line="567" column="50" selection-start-line="567" selection-start-column="50" selection-end-line="567" selection-end-column="50" />
+            <state relative-caret-position="252">
+              <caret line="352" column="4" selection-start-line="352" selection-start-column="4" selection-end-line="352" selection-end-column="4" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -134,12 +123,12 @@
       <list>
         <option value="$PROJECT_DIR$/prediction.py" />
         <option value="$PROJECT_DIR$/tf_mnist_loader.py" />
-        <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/glimpse.py" />
         <option value="$PROJECT_DIR$/ram_modified.py" />
-        <option value="$PROJECT_DIR$/constant.py" />
         <option value="$PROJECT_DIR$/gen_data.py" />
+        <option value="$PROJECT_DIR$/.gitignore" />
+        <option value="$PROJECT_DIR$/constant.py" />
       </list>
     </option>
   </component>
@@ -220,8 +209,8 @@
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Python Console" order="7" weight="0.32948583" />
       <window_info anchor="bottom" id="Run" order="2" />
-      <window_info anchor="bottom" id="Terminal" order="7" visible="true" weight="0.29590765" />
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.17910448" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="7" visible="true" weight="0.119622245" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.17910448" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="right" id="Database" order="4" weight="0.32946378" />
       <window_info anchor="right" id="SciView" order="3" />
@@ -580,6 +569,13 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="291">
+          <caret line="106" lean-forward="true" selection-start-line="106" selection-end-line="106" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/utils.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="18">
@@ -587,27 +583,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/constant.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="198">
+          <caret line="11" column="20" lean-forward="true" selection-start-line="11" selection-start-column="20" selection-end-line="11" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/ram_modified.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9936">
-          <caret line="567" column="50" selection-start-line="567" selection-start-column="50" selection-end-line="567" selection-end-column="50" />
+        <state relative-caret-position="252">
+          <caret line="352" column="4" selection-start-line="352" selection-start-column="4" selection-end-line="352" selection-end-column="4" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/.gitignore">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="108">
-          <caret line="6" column="4" selection-start-line="6" selection-start-column="4" selection-end-line="6" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/constant.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="54">
-          <caret line="3" column="17" selection-start-line="3" selection-start-column="17" selection-end-line="3" selection-end-column="17" />
         </state>
       </provider>
     </entry>

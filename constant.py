@@ -5,13 +5,16 @@ eval_only = False
 draw = False
 animate = False
 
-mix_training = False
+
 
 # conditions
 translateMnist = 1
+MixedMnist = False
+clutteredMnist = True
 translateMnist_scale = 56
 eyeCentered = 0
 
+# pretrain
 preTraining = 0
 preTraining_epoch = 20000
 drawReconsturction = 0
