@@ -3,19 +3,12 @@ import tf_mnist_loader
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-import random
-from random import Random
 import sys
 import os
 
-import cv2
-from PIL import Image
-import PIL.ImageDraw as ImageDraw
-import PIL.ImageFont as ImageFont
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+from constant import *
+from utils import *
+from gen_data import *
 
 mode='baseline'
 # mode='conv'
@@ -37,108 +30,25 @@ if len(sys.argv) == 2:
     print("Simulation name = " + simulationName)
     summaryFolderName = summaryFolderName + simulationName + "/"
     save_dir= save_dir + simulationName + '/'
-    saveImgs = True
     imgsFolderName = "imgs/" + simulationName + "/"
     if os.path.isdir(summaryFolderName) == False:
         os.mkdir(summaryFolderName)
-    # if os.path.isdir(imgsFolderName) == False:
-    #     os.mkdir(imgsFolderName)
-else:
-    saveImgs = False
-    print("Testing... image files will not be saved.")
 
-
-start_step = 0
 
 scales = ['0.5', '0.75', '1', '1.5', '2']
 load_paths = []
 for scale in scales:
     load_paths += ['./chckPts/{}_{}_c'.format(mode, scale)]
-# to enable visualization, set draw to True
-eval_only = True
-draw = False
-animate = False
 
-mix_training = False
-
-# conditions
-translateMnist = 1
-translateMnist_scale = 56
-eyeCentered = 0
-
-preTraining = 0
-preTraining_epoch = 20000
-drawReconsturction = 0
-
-# about translation
-MNIST_SIZE = 28
-translated_img_size = 60             # side length of the picture
-
-fixed_learning_rate = 0.001
-
-
-if translateMnist:
-    print("TRANSLATED MNIST")
-    img_size = translated_img_size
-    depth = 3  # number of zooms
-    sensorBandwidth = 12
-    minRadius = 8  # zooms -> minRadius * 2**<depth_level>
-
-    initLr = 1e-3
-    lr_min = 1e-4
-    lrDecayRate = .999
-    lrDecayFreq = 200
-    momentumValue = .9
-    batch_size = 64
-
-else:
-    print("CENTERED MNIST")
-    img_size = MNIST_SIZE
-    depth = 1  # number of zooms
-    sensorBandwidth = 8
-    minRadius = 4  # zooms -> minRadius * 2**<depth_level>
-
-    initLr = 1e-3
-    lrDecayRate = .99
-    lrDecayFreq = 200
-    momentumValue = .9
-    batch_size = 20
-
-
-# model parameters
-channels = 1                # mnist are grayscale images
-totalSensorBandwidth = depth * channels * (sensorBandwidth **2)
-nGlimpses = 6               # number of glimpses
-loc_sd = 0.22               # std when setting the location
-
-# network units
-hg_size = 64               #
-hl_size = 128               #
-g_size = 256                #
-cell_size = 256             #
-cell_out_size = cell_size   #
-
-# paramters about the training examples
-n_classes = 10              # card(Y)
-
-# training parameters
-max_iters = 1000000
-SMALL_NUM = 1e-10
-
-# resource prellocation
-mean_locs = []              # expectation of locations
-sampled_locs = []           # sampled locations ~N(mean_locs[.], loc_sd)
-baselines = []              # baseline, the value prediction
-glimpse_images = []         # to show in window
-
-
-# set the weights to be small random values, with truncated normal distribution
-def weight_variable(shape, myname, train):
-    initial = tf.random_uniform(shape, minval=-0.1, maxval = 0.1)
-    return tf.Variable(initial, name=myname, trainable=train)
 
 # get local glimpses
 def glimpseSensor(img, normLoc):
+    """
+    Get Glimpse for the given location
+    :param img:
+    :param normLoc:
+    :return:
+    """
     loc = tf.round(((normLoc + 1) / 2.0) * img_size)  # normLoc coordinates are between -1 and 1
     loc = tf.cast(loc, tf.int32)
 
@@ -264,16 +174,6 @@ def get_next_input(output):
         return get_glimpse_conv(sample_loc)
 
 
-def affineTransform(x,output_dim):
-    """
-    affine transformation Wx+b
-    assumes x.shape = (batch_size, num_features)
-    """
-    w=tf.get_variable("w", [x.get_shape()[1], output_dim])
-    b=tf.get_variable("b", [output_dim], initializer=tf.constant_initializer(0.0))
-    return tf.matmul(x,w)+b
-
-
 def model():
 
     # initialize the location under unif[-1,1], for all example in the batch
@@ -321,23 +221,6 @@ def model():
         REUSE = True  # share variables for later recurrence
 
     return outputs
-
-
-def dense_to_one_hot(labels_dense, num_classes=10):
-    """Convert class labels from scalars to one-hot vectors."""
-    # copied from TensorFlow tutorial
-    num_labels = labels_dense.shape[0]
-    index_offset = np.arange(num_labels) * num_classes
-    labels_one_hot = np.zeros((num_labels, num_classes))
-    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-    return labels_one_hot
-
-
-# to use for maximum likelihood with input location
-def gaussian_pdf(mean, sample):
-    Z = 1.0 / (loc_sd * tf.sqrt(2.0 * np.pi))
-    a = -tf.square(sample - mean) / (2.0 * tf.square(loc_sd))
-    return Z * tf.exp(a)
 
 
 def calc_reward(outputs):
@@ -460,144 +343,6 @@ def evaluate_cluttered(trans_size):
     accuracy /= batches_in_epoch
     print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
 
-def convertTranslated(images, initImgSize, transSize, finalImgSize):
-    size_diff = finalImgSize - transSize
-    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
-    imgCoord = np.zeros([batch_size,2])
-    for k in range(batch_size):
-        image = images[k, :]
-        image = np.reshape(image, (initImgSize, initImgSize))
-        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
-        # generate and save random coordinates
-        Random1 = Random(217)
-        randX = Random1.randint(0, size_diff)
-        randY = Random1.randint(0, size_diff)
-        imgCoord[k,:] = np.array([randX, randY])
-        # padding
-        image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
-        # plt.imshow(image, cmap='gray')
-        # plt.show()
-        newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
-
-    return newimages, imgCoord
-
-
-def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
-
-    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
-    imgCoord = np.zeros([batch_size,2])
-    for k in range(batch_size):
-        rand_int = np.random.randint(0,len(transSizes))
-        transSize = transSizes[rand_int]
-        size_diff = finalImgSize - transSize
-        image = images[k, :]
-        image = np.reshape(image, (initImgSize, initImgSize))
-        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
-        # generate and save random coordinates
-        randX = np.random.randint(0, size_diff)
-        randY = np.random.randint(0, size_diff)
-        imgCoord[k,:] = np.array([randX, randY])
-        # padding
-        image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
-        # plt.imshow(image, cmap='gray')
-        # plt.show()
-        newimages[k, :] = np.reshape(image, (finalImgSize*finalImgSize))
-
-    return newimages, imgCoord
-
-
-def convertCluttered(images, initImgSize, transSize, finalImgSize):
-    clutter_size = int(MNIST_SIZE/2)
-    size_diff = finalImgSize - transSize
-    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
-    imgCoord = np.zeros([batch_size,2])
-    for k in range(batch_size):
-        image = images[k, :]
-        image = np.reshape(image, (initImgSize, initImgSize))
-        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
-        # generate and save random coordinates
-        # Random1 = Random(217)
-        randX_img = np.random.randint(0, size_diff)
-        randY_img = np.random.randint(0, size_diff)
-        imgCoord[k,:] = np.array([randX_img, randY_img])
-        #clutter
-        clutter = np.reshape(images[np.random.randint(0,batch_size), :], (initImgSize, initImgSize))
-        num1 = np.random.randint(0,2)
-        num2 = np.random.randint(0,2)
-        clutter = clutter[num1*clutter_size:num1*clutter_size+clutter_size, num2*clutter_size:num2*clutter_size+clutter_size]
-
-        # if the clutter cannot fit
-        if size_diff/2 < clutter_size:
-            rand_num = np.random.randint(0,2)
-            if rand_num:
-                if randX_img > size_diff/2:
-                    clutter_x = 0
-                else:
-                    clutter_x = finalImgSize - clutter_size
-                clutter_y = np.random.randint(0, finalImgSize - clutter_size)
-            else:
-                if randY_img > size_diff/2:
-                    clutter_y = 0
-                else:
-                    clutter_y = finalImgSize - clutter_size
-                clutter_x = np.random.randint(0, finalImgSize - clutter_size)
-        else:
-            # padding
-            clutter_x = np.random.randint(0, finalImgSize - clutter_size)
-            clutter_y = np.random.randint(0, finalImgSize - clutter_size)
-            while True:
-                if randX_img - clutter_size < clutter_x < randX_img + transSize and randY_img - clutter_size < clutter_y < randY_img + transSize:
-                    clutter_x = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
-                    clutter_y = np.random.randint(0, finalImgSize - int(MNIST_SIZE / 2))
-                else:
-                    break
-        image_pad = np.zeros((finalImgSize, finalImgSize))
-        image_pad[clutter_x:clutter_x+clutter_size, clutter_y:clutter_y+clutter_size] = clutter
-        image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
-        # plt.imshow(image_pad, cmap='gray')
-        # plt.show()
-        newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
-
-    return newimages, imgCoord
-
-
-def toMnistCoordinates(coordinate_tanh):
-    '''
-    Transform coordinate in [-1,1] to mnist
-    :param coordinate_tanh: vector in [-1,1] x [-1,1]
-    :return: vector in the corresponding mnist coordinate
-    '''
-    return np.round(((coordinate_tanh + 1) / 2.0) * img_size)
-
-
-def variable_summaries(var, name):
-    """Attach a lot of summaries to a Tensor."""
-    with tf.name_scope('param_summaries'):
-        mean = tf.reduce_mean(var)
-        tf.summary.scalar('param_mean/' + name, mean)
-        with tf.name_scope('param_stddev'):
-            stddev = tf.sqrt(tf.reduce_sum(tf.square(var - mean)))
-        tf.summary.scalar('param_sttdev/' + name, stddev)
-        tf.summary.scalar('param_max/' + name, tf.reduce_max(var))
-        tf.summary.scalar('param_min/' + name, tf.reduce_min(var))
-        tf.summary.histogram(name, var)
-
-
-def plotWholeImg(img, img_size, sampled_locs_fetched):
-    plt.imshow(np.reshape(img, [img_size, img_size]),
-               cmap=plt.get_cmap('gray'), interpolation="nearest")
-
-    plt.ylim((img_size - 1, 0))
-    plt.xlim((0, img_size - 1))
-
-    # transform the coordinate to mnist map
-    sampled_locs_mnist_fetched = toMnistCoordinates(sampled_locs_fetched)
-    # visualize the trace of successive nGlimpses (note that x and y coordinates are "flipped")
-    plt.plot(sampled_locs_mnist_fetched[0, :, 1], sampled_locs_mnist_fetched[0, :, 0], '-o',
-             color='lawngreen')
-    plt.plot(sampled_locs_mnist_fetched[0, -1, 1], sampled_locs_mnist_fetched[0, -1, 0], 'o',
-             color='red')
-
 
 # with tf.device('/gpu:1'):
 
@@ -621,6 +366,7 @@ with tf.Graph().as_default():
         Wg_l_h = weight_variable((146, hl_size), "glimpseNet_wts_location_hidden", True)
     else:
         Wg_l_h = weight_variable((2, hl_size), "glimpseNet_wts_location_hidden", True)
+
     Bg_l_h = weight_variable((1,hl_size), "glimpseNet_bias_location_hidden", True)
 
     Wg_g_h = weight_variable((totalSensorBandwidth, hg_size), "glimpseNet_wts_glimpse_hidden", True)
@@ -688,39 +434,13 @@ with tf.Graph().as_default():
     tf.summary.scalar("mean(b)", avg_b)
     tf.summary.scalar("mean(R - b)", rminusb)
 
-    def draw_bbox(image_path, locations):
-        locations = toMnistCoordinates(locations)
-        image_path = np.squeeze(np.uint8(image_path), -1)
-        im = Image.fromarray(np.uint8(image_path), "L")
-        im = im.convert("RGB")
-        try:
-            font = ImageFont.truetype('arial.ttf', 3)
-        except IOError:
-            font = ImageFont.load_default()
-        draw = ImageDraw.Draw(im)
-        colors = ['red', 'yellow', 'blue', 'green', 'pink', 'purple']
-        for index, location in enumerate(locations, 1):
-            # text_bottom = location[0] + 6 + 3
-            left = location[1] - 6
-            right = location[1] + 6
-            top = location[0] + 6
-            bottom = location[0] - 6
-            draw.line([(left, top), (left, bottom), (right, bottom),
-                       (right, top), (left, top)], width=1, fill=colors[index-1])
-        return im
+    summary_op = tf.summary.merge_all()
 
-
-    def draw_boxes(image_and_detections):
-        """Draws boxes on image."""
-        image_with_boxes = tf.py_func(draw_bbox, image_and_detections,
-                                      tf.uint8)
-        return image_with_boxes
-
+    # visualize location in tensorboard
     # image_reshape = tf.reshape(inputs_placeholder, (batch_size, img_size, img_size, 1))
     # image_reshape = tf.cast(tf.multiply(image_reshape, 255.0), dtype=tf.uint8)
     # images = tf.map_fn(draw_boxes, [image_reshape, sampled_locs], dtype=tf.uint8, back_prop=False)
 
-    summary_op = tf.summary.merge_all()
     ####################################### START RUNNING THE MODEL #######################################
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
