@@ -353,9 +353,8 @@ with tf.Graph().as_default():
     lr = tf.train.exponential_decay(initLr, global_step, lrDecayFreq, lrDecayRate, staircase=True)
 
     # preallocate x, y, baseline
-    labels = tf.placeholder("float32", shape=[batch_size, n_classes])
     labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size), name="labels_raw")
-    onehot_labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, 10), name="labels_onehot")
+    onehot_labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, n_classes), name="labels_onehot")
     inputs_placeholder = tf.placeholder(tf.float32, shape=(batch_size, img_size * img_size), name="images")
 
     # declare the model parameters, here're naming rule:
@@ -488,7 +487,6 @@ with tf.Graph().as_default():
         if preTraining:
             for epoch_r in range(1,preTraining_epoch):
                 nextX, _ = dataset.train.next_batch(batch_size)
-                nextX_orig = nextX
                 if translateMnist:
                     nextX, _ = convertTranslated(nextX, MNIST_SIZE, MNIST_SIZE, img_size)
 
@@ -526,7 +524,6 @@ with tf.Graph().as_default():
 
             # get the next batch of examples
             nextX, nextY = dataset.train.next_batch(batch_size)
-            nextX_orig = nextX
             if translateMnist:
                 if MixedMnist:
                     list_scales = [int(0.5*MNIST_SIZE), int(0.75*MNIST_SIZE), MNIST_SIZE, int(1.5*MNIST_SIZE), int(2*MNIST_SIZE)]

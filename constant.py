@@ -8,10 +8,10 @@ animate = False
 
 
 # conditions
-translateMnist = 1
+translateMnist = 0
 MixedMnist = False
 clutteredMnist = True
-translateMnist_scale = 56
+translateMnist_scale = 28
 eyeCentered = 0
 
 # pretrain
