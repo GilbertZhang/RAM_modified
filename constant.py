@@ -8,7 +8,7 @@ animate = False
 
 
 # conditions
-translateMnist = 0
+translateMnist = 1
 MixedMnist = False
 clutteredMnist = True
 translateMnist_scale = 28

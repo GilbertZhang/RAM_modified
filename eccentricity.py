@@ -79,6 +79,7 @@ def glimpseSensor(img, normLoc):
 
     return zooms
 
+
 def get_glimpse_eccen(loc):
     # get input using the previous location
     glimpse_input = glimpseSensor(inputs_placeholder, loc)
@@ -89,6 +90,7 @@ def get_glimpse_eccen(loc):
     filters = weight_variable([1, 3, 3, 1, 16], 'conv3d_w', True)
     conv3d = tf.nn.conv3d(glimpse_input, filters, strides=[1, 1, 1, 1, 1], padding='VALID') # 20*3*8*8*16
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,1,2,2,1], padding="VALID")
+    conv3d = tf.nn.relu(conv3d)
     filters2 = weight_variable([1, 2, 2, 16, 16], 'conv3d_w2', True)
     conv3d = tf.nn.conv3d(conv3d, filters2, strides=[1,1,1,1,1], padding='VALID')
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
