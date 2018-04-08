@@ -239,7 +239,7 @@ with tf.Graph().as_default():
             if epoch % 50 == 0:
                 print(('Step %d: cost = %.5f'% (epoch, batch_loss)))
 
-                if epoch % 200 == 0:
+                if epoch % 2000 == 0:
                     saver.save(sess, save_dir + save_prefix + str(epoch) + ".ckpt")
                     evaluate()
 
