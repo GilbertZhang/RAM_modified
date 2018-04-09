@@ -1,6 +1,8 @@
 from constant import *
 import numpy as np
 import cv2
+from os import listdir
+import matplotlib.pyplot as plt
 
 def convertTranslated(images, initImgSize, transSize, finalImgSize):
     size_diff = finalImgSize - transSize
@@ -155,6 +157,34 @@ def convertCluttered(images, initImgSize, transSize, finalImgSize):
         image_pad[clutter_x:clutter_x+clutter_size, clutter_y:clutter_y+clutter_size] = clutter
         image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
         # plt.imshow(image_pad, cmap='gray')
+        # plt.show()
+        newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
+
+    return newimages, imgCoord
+
+
+def convertTranslated_place(images, initImgSize, transSize, finalImgSize, paths):
+    size_diff = finalImgSize - transSize
+    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
+    imgCoord = np.zeros([batch_size,2])
+    for k in range(batch_size):
+        image = images[k, :]
+        image = np.reshape(image, (initImgSize, initImgSize))
+        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
+        # generate and save random coordinates
+        randX = np.random.randint(0, size_diff)
+        randY = np.random.randint(0, size_diff)
+        imgCoord[k,:] = np.array([randX, randY])
+        # padding
+        image_pad = np.zeros((finalImgSize, finalImgSize))
+        select = np.random.randint(0, len(paths))
+        bg = cv2.imread(paths[select])
+        bg = cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY)
+        x = np.random.randint(0, 255-finalImgSize)
+        y = np.random.randint(0, 255-finalImgSize)
+        image_pad[:,:] = bg[x:x+finalImgSize,y:y+finalImgSize]/255
+        image_pad[randX:randX+transSize, randY:randY+transSize] = image
+        # plt.imshow(bg, cmap='gray')
         # plt.show()
         newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 

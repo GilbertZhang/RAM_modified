@@ -35,7 +35,7 @@ if len(sys.argv) == 2:
         os.mkdir(summaryFolderName)
 
 
-scales = ['0.5', '0.75', '1', '1.5', '2']
+scales = ['0.5', '0.75', '1', '1.5', '2', 'mix']
 load_paths = []
 for scale in scales:
     load_paths += ['./chckPts/{}_{}_c'.format(mode, scale)]
@@ -344,6 +344,25 @@ def evaluate_cluttered(trans_size):
     print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
 
 
+def evaluate_place(trans_size):
+    data = dataset.test
+    batches_in_epoch = len(data._images) // batch_size
+    accuracy = 0
+    paths = [os.path.join('/home/gilbert/Downloads/test_256', f) for f in
+             listdir('/home/gilbert/Downloads/test_256')]
+    for i in range(batches_in_epoch):
+        nextX, nextY = dataset.test.next_batch(batch_size)
+        if translateMnist:
+            nextX, nextX_coord = convertTranslated_place(nextX, MNIST_SIZE, trans_size, img_size, paths)
+        feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
+                     onehot_labels_placeholder: dense_to_one_hot(nextY)}
+        r = sess.run(reward, feed_dict=feed_dict)
+        accuracy += r
+
+    accuracy /= batches_in_epoch
+    print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
+
+
 # with tf.device('/gpu:1'):
 
 with tf.Graph().as_default():
@@ -457,16 +476,22 @@ with tf.Graph().as_default():
             ckpt_path = tf.train.latest_checkpoint(path)
             saver.restore(sess, ckpt_path)
             print(ckpt_path)
-            evaluate_only(14)
-            evaluate_only(21)
-            evaluate_only(28)
-            evaluate_only(42)
-            evaluate_only(56)
-            evaluate_cluttered(14)
-            evaluate_cluttered(21)
-            evaluate_cluttered(28)
-            evaluate_cluttered(42)
-            evaluate_cluttered(56)
+            # evaluate_only(14)
+            # evaluate_only(21)
+            # evaluate_only(28)
+            # evaluate_only(42)
+            # evaluate_only(56)
+            # evaluate_cluttered(14)
+            # evaluate_cluttered(21)
+            # evaluate_cluttered(28)
+            # evaluate_cluttered(42)
+            # evaluate_cluttered(56)
+
+            evaluate_place(14)
+            evaluate_place(21)
+            evaluate_place(28)
+            evaluate_place(42)
+            evaluate_place(56)
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 
