@@ -35,7 +35,8 @@ if len(sys.argv) == 2:
         os.mkdir(summaryFolderName)
 
 
-scales = ['0.5', '0.75', '1', '1.5', '2', 'mix']
+# scales = ['0.5', '0.75', '1', '1.5', '2', 'mix']
+scales = ['1']
 load_paths = []
 for scale in scales:
     load_paths += ['./chckPts/{}_{}_c'.format(mode, scale)]
@@ -223,10 +224,10 @@ def model():
     return outputs
 
 
-def calc_reward(outputs):
+def calc_reward(outputs, no_glp=-1):
 
     # consider the action at the last time step
-    outputs = outputs[-1] # look at ONLY THE END of the sequence
+    outputs = outputs[no_glp] # look at ONLY THE END of the sequence
     outputs = tf.reshape(outputs, (batch_size, cell_out_size))
 
     # get the baseline
@@ -348,8 +349,8 @@ def evaluate_place(trans_size):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0
-    paths = [os.path.join('/home/gilbert/Downloads/test_256', f) for f in
-             listdir('/home/gilbert/Downloads/test_256')]
+    paths = [os.path.join('../test_256', f) for f in
+             listdir('../test_256')]
     for i in range(batches_in_epoch):
         nextX, nextY = dataset.test.next_batch(batch_size)
         if translateMnist:
@@ -423,7 +424,7 @@ with tf.Graph().as_default():
 
     # compute the reward
     reconstructionCost, reconstruction, train_op_r = preTrain(outputs)
-    cost, reward, predicted_labels, correct_labels, train_op, b, avg_b, rminusb, lr = calc_reward(outputs)
+    cost, reward, predicted_labels, correct_labels, train_op, b, avg_b, rminusb, lr = calc_reward(outputs, no_glp)
 
     # tensorboard visualization for the parameters
     variable_summaries(Wg_l_h, "glimpseNet_wts_location_hidden")
@@ -478,7 +479,7 @@ with tf.Graph().as_default():
             print(ckpt_path)
             # evaluate_only(14)
             # evaluate_only(21)
-            # evaluate_only(28)
+            evaluate_only(28)
             # evaluate_only(42)
             # evaluate_only(56)
             # evaluate_cluttered(14)
@@ -487,11 +488,11 @@ with tf.Graph().as_default():
             # evaluate_cluttered(42)
             # evaluate_cluttered(56)
 
-            evaluate_place(14)
-            evaluate_place(21)
-            evaluate_place(28)
-            evaluate_place(42)
-            evaluate_place(56)
+            #evaluate_place(14)
+            # evaluate_place(21)
+            # evaluate_place(28)
+            # evaluate_place(42)
+            # evaluate_place(56)
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 

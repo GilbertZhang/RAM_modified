@@ -5,7 +5,7 @@ eval_only = True
 draw = False
 animate = False
 
-
+no_glp = -1
 
 # conditions
 translateMnist = 1
