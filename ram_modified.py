@@ -10,8 +10,8 @@ from constant import *
 from utils import *
 from gen_data import *
 
-mode='baseline'
-# mode='conv'
+# mode='baseline'
+mode='conv'
 # mode='concat'
 
 try:
