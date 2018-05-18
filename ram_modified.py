@@ -127,6 +127,7 @@ def get_glimpse_conv(loc):
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
 
     act_glimpse_hidden = tf.reshape(conv3d, (batch_size, 128))
+    act_glimpse_hidden = tf.nn.relu(act_glimpse_hidden + weight_variable((1, 128), 'conv3d_b', True))
 
     if mode == 'concat':
         all_scales = tf.unstack(glimpse_input, axis=1)
