@@ -15,6 +15,8 @@ def convertTranslated(images, initImgSize, transSize, finalImgSize):
         # generate and save random coordinates
         randX = np.random.randint(0, size_diff)
         randY = np.random.randint(0, size_diff)
+        # randY = int(size_diff/2)
+        # randX = int(size_diff/2)
         imgCoord[k,:] = np.array([randX, randY])
         # padding
         image = np.lib.pad(image, ((randX, size_diff - randX), (randY, size_diff - randY)), 'constant', constant_values = (0))
