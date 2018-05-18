@@ -58,7 +58,7 @@ nGlimpses = 6               # number of glimpses
 loc_sd = 0.22               # std when setting the location
 
 # network units
-hg_size = 64               #
+hg_size = 128               #
 hl_size = 128               #
 g_size = 256                #
 cell_size = 256             #

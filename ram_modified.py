@@ -113,19 +113,21 @@ def get_glimpse(loc):
 def get_glimpse_conv(loc):
     # get input using the previous location
     glimpse_input = glimpseSensor(inputs_placeholder, loc)
-    ###glimpse_input = tf.reshape(glimpse_input, (batch_size, totalSensorBandwidth))
     glimpse_input = tf.expand_dims(glimpse_input, 4)
     glimpse_input = tf.reshape(glimpse_input, (batch_size, 3, sensorBandwidth, sensorBandwidth, 1))
     # the hidden units that process location & the input
-    ###act_glimpse_hidden = tf.nn.relu(tf.matmul(glimpse_input, Wg_g_h) + Bg_g_h)
-    filters = weight_variable([1, 3, 3, 1, 16], 'conv3d_w', True)
+    filters = weight_variable([1, 3, 3, 1, 32], 'conv3d_w', True)
     conv3d = tf.nn.conv3d(glimpse_input, filters, strides=[1, 1, 1, 1, 1], padding='VALID') # 20*3*8*8*16
+    conv3d = tf.nn.relu(conv3d)
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,1,2,2,1], padding="VALID")
-    filters2 = weight_variable([1, 2, 2, 16, 16], 'conv3d_w2', True)
+
+    filters2 = weight_variable([1, 2, 2, 32, 32], 'conv3d_w2', True)
     conv3d = tf.nn.conv3d(conv3d, filters2, strides=[1,1,1,1,1], padding='VALID')
+    conv3d = tf.nn.relu(conv3d)
     conv3d = tf.nn.max_pool3d(conv3d, [1,2,2,2,1], [1,2,2,2,1], padding="VALID")
-    conv3d_reshape = tf.reshape(conv3d, (batch_size, 64))
-    act_glimpse_hidden = tf.nn.relu(conv3d_reshape + weight_variable((1, 64), 'conv3d_b', True))
+
+    act_glimpse_hidden = tf.reshape(conv3d, (batch_size, 128))
+
     if mode == 'concat':
         all_scales = tf.unstack(glimpse_input, axis=1)
         last_scale = tf.reshape(all_scales[-1], (batch_size, sensorBandwidth**2))
