@@ -561,9 +561,13 @@ with tf.Graph().as_default():
                     else:
                         nextX, nextX_coord = convertTranslated_mix(nextX, MNIST_SIZE, list_scales, img_size)
                 else:
-                    if clutteredMnist:
+                    if placeMnist:
+                        paths = [os.path.join('../test_256', f) for f in
+                                 listdir('../test_256')]
+                        nextX, nextX_coord = convertTranslated_place(nextX, MNIST_SIZE, translateMnist_scale, img_size, paths)
+                    elif clutteredMnist:
                         nextX, nextX_coord = convertCluttered(nextX, MNIST_SIZE, translateMnist_scale, img_size)
-                    else:
+                    else:# translated mnist
                         nextX, nextX_coord = convertTranslated(nextX, MNIST_SIZE,  translateMnist_scale, img_size)
 
             feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY, \

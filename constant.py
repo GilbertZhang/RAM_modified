@@ -11,6 +11,7 @@ no_glp = -1
 translateMnist = 1
 MixedMnist = False
 clutteredMnist = False
+placeMnist = True
 translateMnist_scale = 28
 eyeCentered = 0
 
