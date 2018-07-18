@@ -39,7 +39,7 @@ if len(sys.argv) == 2:
 scales = ['1']
 load_paths = []
 for scale in scales:
-    load_paths += ['./chckPts/{}_{}_c'.format(mode, scale)]
+    load_paths += ['./chckPts/{}_{}_nc'.format(mode, scale)]
 
 
 # get local glimpses
@@ -241,7 +241,7 @@ def calc_reward(outputs, no_glp=-1):
 
     # get the action(classification)
     p_y = tf.nn.softmax(tf.matmul(outputs, Wa_h_a) + Ba_h_a)
-    max_p_y = tf.arg_max(p_y, 1)
+    max_p_y = tf.argmax(p_y, 1)
     correct_y = tf.cast(labels_placeholder, tf.int64)
 
     # reward for all examples in the batch

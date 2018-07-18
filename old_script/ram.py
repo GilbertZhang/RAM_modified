@@ -37,7 +37,7 @@ start_step = 0
 #load_path = None
 load_path = save_dir + save_prefix + str(start_step) + ".ckpt"
 # to enable visualization, set draw to True
-eval_only = False
+eval_only = True
 draw = 0
 animate = 0
 
