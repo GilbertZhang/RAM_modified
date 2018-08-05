@@ -633,12 +633,12 @@ with tf.Graph().as_default():
                 #     summary_writer.add_summary(sum_img, epoch)
 
                 ##### DRAW WINDOW ################
-                f_glimpse_images = np.reshape(glimpse_images_fetched,
-                                              (nGlimpses, batch_size, depth, sensorBandwidth, sensorBandwidth))
-                plt.imshow(np.reshape(nextX[0, :], [60, 60]),
-                           cmap=plt.get_cmap('gray'), interpolation="nearest")
-                plt.axis('off')
-                plt.show()
+                # f_glimpse_images = np.reshape(glimpse_images_fetched,
+                #                               (nGlimpses, batch_size, depth, sensorBandwidth, sensorBandwidth))
+                # plt.imshow(np.reshape(nextX[0, :], [60, 60]),
+                #            cmap=plt.get_cmap('gray'), interpolation="nearest")
+                # plt.axis('off')
+                # plt.show()
 
                 if draw:
                     if animate:
