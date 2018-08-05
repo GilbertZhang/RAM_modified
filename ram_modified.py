@@ -348,6 +348,30 @@ def evaluate_cluttered(trans_size):
     print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
 
 
+def evaluate_FixedCluttered(trans_size):
+    #get the fix clutter
+    ds = tf_mnist_loader.read_data_sets("mnist_data")
+    clutter_image = ds.train.next_batch(1)[0]
+    clutter = np.reshape(clutter_image, (MNIST_SIZE, MNIST_SIZE))
+    clutter = clutter[:int(MNIST_SIZE/2), :int(MNIST_SIZE/2)]
+
+    data = dataset.test
+    batches_in_epoch = len(data._images) // batch_size
+    accuracy = 0
+
+    for i in range(batches_in_epoch):
+        nextX, nextY = dataset.test.next_batch(batch_size)
+        if translateMnist:
+            nextX, _ = convertFixedCluttered(nextX, clutter, MNIST_SIZE, trans_size, img_size)
+        feed_dict = {inputs_placeholder: nextX, labels_placeholder: nextY,
+                     onehot_labels_placeholder: dense_to_one_hot(nextY)}
+        r = sess.run(reward, feed_dict=feed_dict)
+        accuracy += r
+
+    accuracy /= batches_in_epoch
+    print(("Cluttered {} ACCURACY: ".format(trans_size) + str(accuracy)))
+
+
 def evaluate_place(trans_size):
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
@@ -506,6 +530,7 @@ with tf.Graph().as_default():
             plt.show()
             plt.subplots_adjust(top=0.7)
             plotImgs = []
+            print('gg')
 
         if drawReconsturction:
             fig = plt.figure(2)
@@ -548,7 +573,7 @@ with tf.Graph().as_default():
         print ("number of mini_batches: ", (dataset.train.num_examples//batch_size))
         num_batch = dataset.train.num_examples//batch_size
         # training
-        for epoch in range(start_step + 1, max_iters):
+        for epoch in range(start_step, max_iters):
             start_time = time.time()
 
             # get the next batch of examples
@@ -565,6 +590,13 @@ with tf.Graph().as_default():
                         paths = [os.path.join('../test_256', f) for f in
                                  listdir('../test_256')]
                         nextX, nextX_coord = convertTranslated_place(nextX, MNIST_SIZE, translateMnist_scale, img_size, paths)
+                    elif fixedclutterMnist:
+                        # get the fix clutter
+                        ds = tf_mnist_loader.read_data_sets("mnist_data")
+                        clutter_image = ds.train.next_batch(1)[0]
+                        clutter = np.reshape(clutter_image, (MNIST_SIZE, MNIST_SIZE))
+                        clutter = clutter[:int(MNIST_SIZE / 2), :int(MNIST_SIZE / 2)]
+                        nextX, nextX_coord = convertFixedCluttered(nextX, clutter, MNIST_SIZE, translateMnist_scale, img_size)
                     elif clutteredMnist:
                         nextX, nextX_coord = convertCluttered(nextX, MNIST_SIZE, translateMnist_scale, img_size)
                     else:# translated mnist
@@ -601,8 +633,12 @@ with tf.Graph().as_default():
                 #     summary_writer.add_summary(sum_img, epoch)
 
                 ##### DRAW WINDOW ################
-                f_glimpse_images = np.reshape(glimpse_images_fetched, \
+                f_glimpse_images = np.reshape(glimpse_images_fetched,
                                               (nGlimpses, batch_size, depth, sensorBandwidth, sensorBandwidth))
+                plt.imshow(np.reshape(nextX[0, :], [60, 60]),
+                           cmap=plt.get_cmap('gray'), interpolation="nearest")
+                plt.axis('off')
+                plt.show()
 
                 if draw:
                     if animate:

@@ -191,3 +191,34 @@ def convertTranslated_place(images, initImgSize, transSize, finalImgSize, paths)
         newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
 
     return newimages, imgCoord
+
+
+def convertFixedCluttered(images, clutter, initImgSize, transSize, finalImgSize):
+    clutter_size = int(MNIST_SIZE/2)
+    size_diff = finalImgSize - transSize
+    newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
+    imgCoord = np.zeros([batch_size,2])
+    for k in range(batch_size):
+        image = images[k, :]
+        image = np.reshape(image, (initImgSize, initImgSize))
+        image = cv2.resize(image, dsize=(transSize, transSize), interpolation=cv2.INTER_NEAREST)
+        if size_diff > clutter_size:
+            randX_img = np.random.randint(0, size_diff)
+            if randX_img <= clutter_size:
+                randY_img = np.random.randint(clutter_size, size_diff)
+            else:
+                randY_img = np.random.randint(0, size_diff)
+        else:
+            randX_img = np.random.randint(0,finalImgSize-transSize)
+            randY_img = np.random.randint(0,finalImgSize-transSize)
+        imgCoord[k,:] = np.array([randX_img, randY_img])
+
+
+        image_pad = np.zeros((finalImgSize, finalImgSize))
+        image_pad[:clutter_size, :clutter_size] = clutter
+        image_pad[randX_img:randX_img+transSize, randY_img:randY_img+transSize] = image
+        # plt.imshow(image_pad, cmap='gray')
+        # plt.show()
+        newimages[k, :] = np.reshape(image_pad, (finalImgSize*finalImgSize))
+
+    return newimages, imgCoord

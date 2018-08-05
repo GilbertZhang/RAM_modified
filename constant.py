@@ -2,7 +2,7 @@ start_step = 0
 
 # to enable visualization, set draw to True
 eval_only = False
-draw = True
+draw = False
 animate = False
 
 no_glp = -1
@@ -10,8 +10,9 @@ no_glp = -1
 # conditions
 translateMnist = 1
 MixedMnist = False
-clutteredMnist = False
-placeMnist = True
+clutteredMnist = True
+placeMnist = False
+fixedclutterMnist = True
 translateMnist_scale = 28
 eyeCentered = 0
 
