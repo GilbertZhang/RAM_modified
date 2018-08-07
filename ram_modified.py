@@ -509,23 +509,17 @@ with tf.Graph().as_default():
             # evaluate_only(28)
             # evaluate_only(42)
             # evaluate_only(56)
-            # evaluate_cluttered(14)
-            # evaluate_cluttered(21)
-            # evaluate_cluttered(28)
-            # evaluate_cluttered(42)
-            # evaluate_cluttered(56)
+            evaluate_cluttered(14)
+            evaluate_cluttered(21)
+            evaluate_cluttered(28)
+            evaluate_cluttered(42)
+            evaluate_cluttered(56)
 
             #evaluate_place(14)
             # evaluate_place(21)
             # evaluate_place(28)
             # evaluate_place(42)
             # evaluate_place(56)
-
-            evaluate_FixedCluttered(14)
-            evaluate_FixedCluttered(21)
-            evaluate_FixedCluttered(28)
-            evaluate_FixedCluttered(42)
-            evaluate_FixedCluttered(56)
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 
