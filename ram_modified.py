@@ -36,11 +36,10 @@ if len(sys.argv) == 2:
 
 
 scales = ['0.5', '0.75', '1', '1.5', '2']
-modes = ['baseline', 'conv', 'concat']
+
 load_paths = []
-for mode in modes:
-    for scale in scales:
-        load_paths += ['./chckPts/{}_{}_fc'.format(mode, scale)]
+for scale in scales:
+    load_paths += ['./chckPts/{}_{}_fc'.format(mode, scale)]
 
 
 # get local glimpses
