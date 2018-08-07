@@ -35,11 +35,12 @@ if len(sys.argv) == 2:
         os.mkdir(summaryFolderName)
 
 
-# scales = ['0.5', '0.75', '1', '1.5', '2', 'mix']
-scales = ['1']
+scales = ['0.5', '0.75', '1', '1.5', '2']
+modes = ['baseline', 'conv', 'concat']
 load_paths = []
-for scale in scales:
-    load_paths += ['./chckPts/{}_{}_nc'.format(mode, scale)]
+for mode in modes:
+    for scale in scales:
+        load_paths += ['./chckPts/{}_{}_fc'.format(mode, scale)]
 
 
 # get local glimpses
@@ -506,7 +507,7 @@ with tf.Graph().as_default():
             print(ckpt_path)
             # evaluate_only(14)
             # evaluate_only(21)
-            evaluate_only(28)
+            # evaluate_only(28)
             # evaluate_only(42)
             # evaluate_only(56)
             # evaluate_cluttered(14)
@@ -520,6 +521,12 @@ with tf.Graph().as_default():
             # evaluate_place(28)
             # evaluate_place(42)
             # evaluate_place(56)
+
+            evaluate_FixedCluttered(14)
+            evaluate_FixedCluttered(21)
+            evaluate_FixedCluttered(28)
+            evaluate_FixedCluttered(42)
+            evaluate_FixedCluttered(56)
     else:
         summary_writer = tf.summary.FileWriter(summaryFolderName, graph=sess.graph)
 

@@ -1,7 +1,7 @@
 start_step = 0
 
 # to enable visualization, set draw to True
-eval_only = False
+eval_only = True
 draw = False
 animate = False
 
