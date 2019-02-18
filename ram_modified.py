@@ -46,9 +46,9 @@ for scale in scales:
 def glimpseSensor(img, normLoc):
     """
     Get Glimpse for the given location
-    :param img:
-    :param normLoc:
-    :return:
+    :param img: numpy array, representing the image
+    :param normLoc: normalized location
+    :return: different zooms for the glimpse sensor
     """
     loc = tf.round(((normLoc + 1) / 2.0) * img_size)  # normLoc coordinates are between -1 and 1
     loc = tf.cast(loc, tf.int32)
@@ -95,6 +95,11 @@ def glimpseSensor(img, normLoc):
 
 # implements the input network
 def get_glimpse(loc):
+    """
+
+    :param loc: normalized location
+    :return: feature for glimpse sensor
+    """
     # get input using the previous location
     glimpse_input = glimpseSensor(inputs_placeholder, loc)
     glimpse_input = tf.reshape(glimpse_input, (batch_size, totalSensorBandwidth))
@@ -111,6 +116,11 @@ def get_glimpse(loc):
 
 # implements the input network
 def get_glimpse_conv(loc):
+    """
+
+    :param loc:
+    :return:
+    """
     # get input using the previous location
     glimpse_input = glimpseSensor(inputs_placeholder, loc)
     glimpse_input = tf.expand_dims(glimpse_input, 4)
@@ -145,6 +155,11 @@ def get_glimpse_conv(loc):
 
 
 def get_next_input(output):
+    """
+
+    :param output:
+    :return:
+    """
     # the next location is computed by the location network
     core_net_out = tf.stop_gradient(output)
 
@@ -228,6 +243,12 @@ def model():
 
 
 def calc_reward(outputs, no_glp=-1):
+    """
+
+    :param outputs:
+    :param no_glp:
+    :return:
+    """
 
     # consider the action at the last time step
     outputs = outputs[no_glp] # look at ONLY THE END of the sequence
@@ -349,6 +370,11 @@ def evaluate_cluttered(trans_size):
 
 
 def evaluate_FixedCluttered(trans_size):
+    """
+
+    :param trans_size:
+    :return:
+    """
     #get the fix clutter
     ds = tf_mnist_loader.read_data_sets("mnist_data")
     clutter_image = ds.train.next_batch(1)[0]
@@ -373,6 +399,11 @@ def evaluate_FixedCluttered(trans_size):
 
 
 def evaluate_place(trans_size):
+    """
+
+    :param trans_size:
+    :return:
+    """
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0

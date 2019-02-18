@@ -81,6 +81,11 @@ def glimpseSensor(img, normLoc):
 
 
 def get_glimpse_eccen(loc):
+    """
+
+    :param loc:
+    :return:
+    """
     # get input using the previous location
     glimpse_input = glimpseSensor(inputs_placeholder, loc)
     glimpse_input = tf.expand_dims(glimpse_input, 4)
@@ -158,6 +163,11 @@ def evaluate_only(scale_size):
 
 
 def evaluate_cluttered(trans_size):
+    """
+
+    :param trans_size:
+    :return:
+    """
     data = dataset.test
     batches_in_epoch = len(data._images) // batch_size
     accuracy = 0

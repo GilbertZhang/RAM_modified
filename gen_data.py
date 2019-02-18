@@ -4,7 +4,16 @@ import cv2
 from os import listdir
 import matplotlib.pyplot as plt
 
+
 def convertTranslated(images, initImgSize, transSize, finalImgSize):
+    """
+
+    :param images:
+    :param initImgSize:
+    :param transSize:
+    :param finalImgSize:
+    :return:
+    """
     size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
     imgCoord = np.zeros([batch_size,2])
@@ -28,6 +37,14 @@ def convertTranslated(images, initImgSize, transSize, finalImgSize):
 
 
 def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
+    """
+
+    :param images:
+    :param initImgSize:
+    :param transSizes:
+    :param finalImgSize:
+    :return:
+    """
 
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
     imgCoord = np.zeros([batch_size,2])
@@ -52,6 +69,14 @@ def convertTranslated_mix(images, initImgSize, transSizes, finalImgSize):
 
 
 def convertCluttered_mix(images, initImgSize, transSizes, finalImgSize):
+    """
+
+    :param images:
+    :param initImgSize:
+    :param transSizes:
+    :param finalImgSize:
+    :return:
+    """
     imgCoord = np.zeros([batch_size,2])
     newimages = np.zeros([batch_size, finalImgSize * finalImgSize])
     clutter_size = int(MNIST_SIZE / 2)
@@ -111,6 +136,14 @@ def convertCluttered_mix(images, initImgSize, transSizes, finalImgSize):
 
 
 def convertCluttered(images, initImgSize, transSize, finalImgSize):
+    """
+
+    :param images:
+    :param initImgSize:
+    :param transSize:
+    :param finalImgSize:
+    :return:
+    """
     clutter_size = int(MNIST_SIZE/2)
     size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
@@ -166,6 +199,15 @@ def convertCluttered(images, initImgSize, transSize, finalImgSize):
 
 
 def convertTranslated_place(images, initImgSize, transSize, finalImgSize, paths):
+    """
+
+    :param images:
+    :param initImgSize:
+    :param transSize:
+    :param finalImgSize:
+    :param paths:
+    :return:
+    """
     size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])
     imgCoord = np.zeros([batch_size,2])
@@ -194,6 +236,15 @@ def convertTranslated_place(images, initImgSize, transSize, finalImgSize, paths)
 
 
 def convertFixedCluttered(images, clutter, initImgSize, transSize, finalImgSize):
+    """
+
+    :param images:
+    :param clutter:
+    :param initImgSize:
+    :param transSize:
+    :param finalImgSize:
+    :return:
+    """
     clutter_size = int(MNIST_SIZE/2)
     size_diff = finalImgSize - transSize
     newimages = np.zeros([batch_size, finalImgSize*finalImgSize])

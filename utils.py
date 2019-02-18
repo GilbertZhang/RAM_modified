@@ -82,6 +82,13 @@ def variable_summaries(var, name):
 
 
 def plotWholeImg(img, img_size, sampled_locs_fetched):
+    """
+
+    :param img:
+    :param img_size:
+    :param sampled_locs_fetched:
+    :return:
+    """
     plt.imshow(np.reshape(img, [img_size, img_size]),
                cmap=plt.get_cmap('gray'), interpolation="nearest")
 
@@ -108,6 +115,12 @@ def dense_to_one_hot(labels_dense, num_classes=10):
 
 # to use for maximum likelihood with input location
 def gaussian_pdf(mean, sample):
+    """
+
+    :param mean:
+    :param sample:
+    :return:
+    """
     Z = 1.0 / (loc_sd * tf.sqrt(2.0 * np.pi))
     a = -tf.square(sample - mean) / (2.0 * tf.square(loc_sd))
     return Z * tf.exp(a)
